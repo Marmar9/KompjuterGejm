@@ -1,0 +1,35 @@
+import("//build/android/apk.gni")
+import("//app/sources.gni")
+
+if (target == "android") {
+libname = getenv("NDK_LIB_NAME")
+
+# build the app lib
+shared_library(libname) {
+  sources = common_srcs + android_platform_srcs
+  configs = ["//build:android_config", "//build:common_config"]
+  deps = ["//engine/src:engine"]
+
+}
+
+android_apk("apkname") {
+    manifest = "//android/AndroidManifest.xml"
+    libarch = arch
+    nativelib = "lib$libname.so"
+    ksfile = getenv("KS_FILE")
+    keyalias = getenv("KEY_ALIAS")
+    kspass = getenv("KS_PASS")
+    keypass = getenv("KEY_PASS")
+    deps = [":$libname"]
+    
+} } 
+
+if (target == "linux") {
+    executable("rendering") {
+        sources = common_srcs + linux_platform_srcs
+
+        deps = ["//engine/src:engine"]
+       
+        configs = ["//build:${target}_config","//build:common_config"]
+    }
+}

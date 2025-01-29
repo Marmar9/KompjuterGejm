@@ -2,3 +2,7 @@ coredump
 compile_commands.json
 build
 .cache
+.clangd
+out
+val-layers
+glm

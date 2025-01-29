@@ -1,0 +1,43 @@
+import("//build/shaders/shaders.gni")
+
+vert_shaders = ["triangle.vert"]
+frag_shaders = ["triangle.frag"]
+
+shader_deps = []
+shader_outputs = []
+
+foreach(shad, vert_shaders) {
+    shader_deps += [":$shad"]
+    shader_outputs += ["$shad.o"]
+    vertex_shader(shad) {
+        shader_dir = "vulkan/shaders"
+    }
+}
+
+foreach(shad, frag_shaders) {
+    shader_deps += [":$shad"]
+    shader_outputs += ["$shad.o"]
+    fragment_shader(shad) {
+        shader_dir = "vulkan/shaders"
+    }
+}
+
+config("engine_config") {
+    ldflags = shader_outputs
+}
+
+static_library("engine") {
+    sources = [
+    "main.cpp",
+    "vulkan/buffer.cpp",
+    "vulkan/handle.cpp",
+    "vulkan/renderer-base.cpp",
+    "vulkan/renderer.cpp",
+    "vulkan/rendering/graphics-pipeline-builder.cpp",
+    "vulkan/swapchain-builder.cpp",
+    "vulkan/swapchain.cpp",
+]
+    configs = ["//build:${target}_config","//build:common_config"]
+    arflags = shader_outputs
+    deps = shader_deps 
+}

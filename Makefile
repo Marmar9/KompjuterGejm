@@ -11,7 +11,7 @@ GAME_ENGINE_LIB := $(GAME_ENGINE_DIR)/build/libgame-engine.so
 DEBUG := 1
 
 CXX := clang++
-CXXFLAGS := -MMD -fPIE -std=c++23 -I$(CURDIR) -I$(GAME_ENGINE_DIR) 
+CXXFLAGS := -MMD -fPIE -fstack-protector-all -std=c++23 -I$(CURDIR) -I$(GAME_ENGINE_DIR) 
 LDFLAGS := -fuse-ld=mold $(GAME_ENGINE_LIB) -lvulkan 
 
 # -Wl,-rpath=$(GAME_ENGINE_PATH) -L$(GAME_ENGINE_PATH) -lgame-engine
@@ -30,7 +30,7 @@ endif
 
 SRCDIR := src
 SRC := $(SRCDIR)/main.cpp
-OUTDIR := build
+OUTDIR := out
 OUTFILE := $(OUTDIR)/out
 
 OUTFILE_DEPS :=

@@ -1,0 +1,18 @@
+common_srcs = ["//app/src/game/game.cpp",
+                "//app/src/common/format-string.cpp",
+                "//app/src/main.cpp"]
+
+linux_platform_srcs = [
+                "//app/inc/platform/linux/window/protocol.c",
+                "//app/inc/platform/linux/window/xdg-shell-protocol.c",
+                "//app/src/platform/linux/window/wayland-window.cpp",
+                "//app/src/platform/linux/exception.cpp",
+                "//app/src/platform/linux/logger.cpp"
+]
+
+android_platform_srcs = [
+                "//app/src/platform/android/window/android-window.cpp",
+                "//app/inc/platform/android/android_native_app_glue.c",
+                "//app/src/platform/android/exception.cpp",
+                "//app/src/platform/android/logger.cpp"
+]
