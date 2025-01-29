@@ -2,11 +2,14 @@
 ## Building from source
 > [!NOTE]
 > The build was tested on
+> 
 > android-ndk r27
+> 
 > clang18 (when building on linux)
-> sdk 
+> 
+> android-platform 35
 
-Chose a build target, checkout [build/BUILDCONFIG.GN](buildconfig/BUILDCONFIG.GN) file.
+Chose a build target, checkout [build/BUILDCONFIG.GN](https://github.com/Marmar9/KompjuterGejm/blob/master/build/BUILDCONFIG.gn) file.
 Two variables **arch** and **target** allow configuration
 Currently "android" and "linux" targets are supported "x86_64" arch is supported.
 
