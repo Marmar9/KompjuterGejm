@@ -1,0 +1,150 @@
+ndkroot = getenv("NDK")
+sdkver = getenv("SDK_VERSION")
+
+
+toolchain("x86_64-android") {
+    tool("cc") {
+    depfile = "{{output}}.d"
+    command = "$ndkroot/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android$sdkver-clang -MMD -MF $depfile {{cflags}} {{include_dirs}} -c {{source}} -o {{output}}"
+    depsformat = "gcc"
+    description = "CC {{output}}"
+    outputs =
+        [ "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.o" ]
+  }
+
+  tool("cxx") {
+    depfile = "{{output}}.d"
+    command = "$ndkroot/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android$sdkver-clang++ -MMD -MF $depfile -std=c++23 {{cflags}}  {{include_dirs}} -c {{source}} -o {{output}}"
+    depsformat = "gcc"
+    description = "CXX {{output}}"
+    outputs =
+        [ "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.o" ]
+  }
+
+ tool("alink") {
+    command = "$ndkroot/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar rcs {{output}} {{arflags}} {{inputs}}"
+    description = "AR {{target_output_name}}{{output_extension}}"
+
+    outputs =
+        [ "{{target_out_dir}}/{{target_output_name}}{{output_extension}}" ]
+    default_output_extension = ".a"
+    output_prefix = "lib"
+  }
+
+ tool("solink") {
+    soname = "{{target_output_name}}{{output_extension}}"
+    sofile = "{{output_dir}}/$soname"
+
+    command = "$ndkroot/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android$sdkver-clang++ -shared {{ldflags}} {{inputs}} {{libs}}  -o $sofile"
+
+    description = "SOLINK $soname"
+
+    default_output_extension = ".so"
+
+    default_output_dir = "{{root_out_dir}}"
+
+    outputs = [ sofile ]
+    link_output = sofile
+    depend_output = sofile
+    output_prefix = "lib"
+  } 
+}
+
+
+toolchain("x86_64-linux") {
+  tool("cc") {
+  depfile = "{{output}}.d"
+  command = "clang -MMD -MF $depfile {{cflags}} {{include_dirs}} -c {{source}} -o {{output}}"
+  depsformat = "gcc"
+  description = "CC {{output}}"
+  outputs =
+      [ "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.o" ]
+  }
+
+  tool("cxx") {
+    depfile = "{{output}}.d"
+    command = "clang++ -MMD -MF $depfile -std=c++23 {{cflags}} {{include_dirs}} -c {{source}} -o {{output}}"
+    depsformat = "gcc"
+    description = "CXX {{output}}"
+    outputs =
+        [ "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.o" ]
+  }
+
+ tool("solink") {
+    soname = "{{target_output_name}}{{output_extension}}"
+    sofile = "{{output_dir}}/$soname"
+
+    command = "clang -fuse-ld=ld.lld -shared {{ldflags}} {{libs}} {{inputs}} -o $sofile"
+
+    description = "SOLINK $soname"
+
+    default_output_extension = ".so"
+
+    default_output_dir = "{{root_out_dir}}"
+
+    outputs = [ sofile ]
+    link_output = sofile
+    depend_output = sofile
+    output_prefix = "lib"
+  } 
+
+ tool("alink") {
+    command = "llvm-ar rcs {{output}} {{arflags}} {{inputs}}"
+    description = "AR {{target_output_name}}{{output_extension}}"
+
+    outputs =
+        [ "{{target_out_dir}}/{{target_output_name}}{{output_extension}}" ]
+    default_output_extension = ".a"
+    output_prefix = "lib"
+  }
+
+tool("link") {
+    outfile = "{{target_output_name}}{{output_extension}}"
+
+    command = "clang++ -std=c++23 -fuse-ld=mold {{inputs}} {{libs}} {{ldflags}} -o $outfile"
+
+    description = "LINK $outfile"
+
+    default_output_dir = "{{root_out_dir}}"
+    outputs = [ outfile ]
+  }
+}
+
+# toolchain("aarch64-android") {
+#     tool("cc") {
+#     depfile = "{{output}}.d"
+#     command = "$ndkroot/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-linux-android$sdkver -mmd -mf $depfile {{cflags}} {{include_dirs}} -c {{source}} -o {{output}}"
+#     depsformat = "gcc"
+#     description = "cc {{output}}"
+#     outputs =
+#         [ "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.o" ]
+#   }
+# 
+#   tool("cxx") {
+#     depfile = "{{output}}.d"
+#     command = "$ndkroot/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-linux-android$sdkver -MMD -MF $depfile -std=c++23 {{cflags}}  {{include_dirs}} -c {{source}} -o {{output}}"
+#     depsformat = "gcc"
+#     description = "CXX {{output}}"
+#     outputs =
+#         [ "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.o" ]
+#   }
+# 
+#  tool("solink") {
+#     soname = "{{target_output_name}}{{output_extension}}"
+#     sofile = "{{output_dir}}/$soname"
+# 
+#     command = "mold -shared -m elf_x86_64 {{ldflags}} {{libs}} {{inputs}} -o $sofile"
+# 
+#     description = "SOLINK $soname"
+# 
+#     default_output_extension = ".so"
+# 
+#     default_output_dir = "{{root_out_dir}}"
+# 
+#     outputs = [ sofile ]
+#     link_output = sofile
+#     depend_output = sofile
+#     output_prefix = "lib"
+#   } 
+# 
+# }

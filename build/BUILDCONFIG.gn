@@ -1,0 +1,11 @@
+# target = "linux"
+target = "android"
+
+arch = "x86_64" 
+# arch = "aarch64"
+
+debug = true
+
+sdk = getenv("SDK_VERSION")
+
+set_default_toolchain("//build/toolchains:$arch-$target")

@@ -1,0 +1,33 @@
+template("fragment_shader") {
+    assert(defined(invoker.shader_dir),"Specify the shader dir without shash suffix")
+    action(target_name) {
+        script = "//build/shaders/build_fragment_shader.py"
+        
+        infile = "${invoker.shader_dir}/$target_name.glsl"
+        outfile = "$root_build_dir/$target_name.o"
+
+        args = [rebase_path(infile, root_build_dir), rebase_path(outfile, root_build_dir)]
+
+        inputs = [infile]
+
+        outputs = [outfile]
+
+    }
+}
+
+template("vertex_shader") {
+    assert(defined(invoker.shader_dir),"Specify the shader dir without shash suffix")
+    action(target_name) {
+        script = "//build/shaders/build_vertex_shader.py"
+
+        infile = "${invoker.shader_dir}/$target_name.glsl"
+        outfile = "$root_build_dir/$target_name.o"
+
+        args = [rebase_path(infile, root_build_dir), rebase_path(outfile, root_build_dir)]
+
+        inputs = [infile]
+
+        outputs = [outfile]
+
+    }
+}

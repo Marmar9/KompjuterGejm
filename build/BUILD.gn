@@ -1,0 +1,45 @@
+config("android_config") {
+    cflags = [
+        "-fpic",
+        "-DANDROID",
+        "-ffunction-sections",
+        "-Os",
+        "-fdata-sections",
+        "-Wall",
+        "-fvisibility=hidden"
+        ]
+
+    ldflags = [
+        "-static-libstdc++",
+        "-Wl,--gc-sections",
+        "-s"
+        ]
+
+    libs = [
+      "android",
+      "log"
+      ]
+
+    if (debug) {
+          # ldflags -= ["-s"]
+          cflags += ["-g","-O0","-DDEBUG"]
+      }
+}
+
+
+
+config("linux_config") {
+    cflags = ["-fstack-protector-all"]
+    libs = ["wayland-client"]
+    ldflags = ["-s"]
+    if (debug) {
+      ldflags -= ["-s"]
+      cflags += ["-g","-O0","-DDEBUG"]
+    }
+}
+
+config("common_config") {
+  include_dirs = ["//app/" ,"//engine/", "//glm" ]
+  libs = ["vulkan"]
+
+}
