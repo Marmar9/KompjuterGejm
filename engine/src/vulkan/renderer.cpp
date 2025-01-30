@@ -227,6 +227,7 @@ static void findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface,
       return;
     }
   }
+
   delete[] queueFamilies;
 }
 
@@ -305,7 +306,62 @@ void createInstance(VkInstance *instance,
 
 void createLogicalDevice(VkPhysicalDevice physicalDevice,
                          DeviceCapabilities *capabilities,
-                         vulkan::Handle<VkDevice> &device) {}
+                         vulkan::Handle<VkDevice> &device) {
+
+  VkPhysicalDeviceFeatures deviceFeatures = {};
+  VkDeviceCreateInfo createInfo = {};
+  createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+  float queuePriority = 1.0f;
+
+  if (capabilities->indices.graphicsFamily ==
+      capabilities->indices.presentationFamily) {
+    VkDeviceQueueCreateInfo queueCreateInfo[1] = {};
+    // Structure for graphics queue
+    queueCreateInfo[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo[0].queueFamilyIndex = capabilities->indices.graphicsFamily;
+    queueCreateInfo[0].queueCount = 1;
+    queueCreateInfo[0].pQueuePriorities = &queuePriority;
+
+    createInfo.pQueueCreateInfos = queueCreateInfo;
+    createInfo.queueCreateInfoCount = 1;
+
+  } else {
+    VkDeviceQueueCreateInfo queueCreateInfo[2] = {};
+    queueCreateInfo[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo[0].queueFamilyIndex = capabilities->indices.graphicsFamily;
+    queueCreateInfo[0].queueCount = 1;
+    queueCreateInfo[0].pQueuePriorities = &queuePriority;
+
+    // Structure for presentationQueue
+    queueCreateInfo[1].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo[1].queueFamilyIndex =
+        capabilities->indices.presentationFamily;
+    queueCreateInfo[1].queueCount = 1;
+
+    queueCreateInfo[1].pQueuePriorities = &queuePriority;
+
+    createInfo.pQueueCreateInfos = queueCreateInfo;
+    createInfo.queueCreateInfoCount = 2;
+  }
+
+  createInfo.pEnabledFeatures = &deviceFeatures;
+
+  createInfo.enabledExtensionCount = STATIC_ARR_LEN(deviceExtentions);
+  createInfo.ppEnabledExtensionNames = deviceExtentions;
+
+#ifdef DEBUG
+  createInfo.enabledLayerCount = vLayers.size();
+  createInfo.ppEnabledLayerNames = vLayers.data();
+
+#endif // DEBUG
+
+  VkDevice deviceP;
+  if (vkCreateDevice(physicalDevice, &createInfo, 0, &deviceP) != VK_SUCCESS) {
+    THROW_EXCEPTION("Failed to create physical device");
+  }
+  device.reset(deviceP);
+}
 
 void Renderer::_createCommandPool() {
   VkCommandPoolCreateInfo poolInfo{};
@@ -364,6 +420,9 @@ void querySwapChainSupport(VkPhysicalDevice physicalDevice,
 bool isDeviceSuitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
                       DeviceCapabilities &capabilities) {
   findQueueFamilies(physicalDevice, surface, capabilities.indices);
+  LOG("QueueFamilies %d,%d", capabilities.indices.graphicsFamily,
+      capabilities.indices.presentationFamily)
+
   querySwapChainSupport(physicalDevice, surface, capabilities.chainSupInf);
 
   if (!checkDeviceExtensionSupport(physicalDevice)) {
