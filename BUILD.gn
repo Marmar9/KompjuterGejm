@@ -13,7 +13,6 @@ shared_library(libname) {
 }
 
 android_apk("apkname") {
-    manifest = "//android/AndroidManifest.xml"
     libarch = arch
     nativelib = "lib$libname.so"
     ksfile = getenv("KS_FILE")

@@ -21,7 +21,7 @@ config("android_config") {
       ]
 
     if (debug) {
-          # ldflags -= ["-s"]
+          ldflags -= ["-s"]
           cflags += ["-g","-O0","-DDEBUG"]
       }
 }

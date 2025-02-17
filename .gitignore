@@ -1,7 +1,12 @@
+# Folders
 coredump
 compile_commands.json
 .cache
 .clangd
+AndroidManifest.xml
+
+# Dirs
 out
 val-layers
 glm
+android

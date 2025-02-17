@@ -1,6 +1,5 @@
 template("android_apk") {
     action(target_name) {
-        assert(defined(invoker.manifest),"You need to specify {manifest} file")
         assert(defined(invoker.libarch),"Set correct {libarch}")
         assert(defined(invoker.nativelib),"Specify {nativelib} to be used")
         assert(defined(invoker.ksfile),"Specify {ksfile} containing apksigner key")
@@ -9,13 +8,12 @@ template("android_apk") {
         assert(defined(invoker.keypass),"Set {{keypass}} to decrypt key")
 
         script = "//build/android/build_apk.py"
-        sources = [invoker.manifest]
+        sources = ["//app/inc/platform/android/res/AndroidManifest.xml.template"]
         outputs = [ "$root_build_dir/${invoker.target_name}.apk" ]
         deps = invoker.deps
         
         args = [
           rebase_path(outputs[0], root_build_dir),
-          rebase_path(invoker.manifest, root_build_dir),
           invoker.libarch,
           invoker.nativelib,
           rebase_path(invoker.ksfile, root_build_dir),
