@@ -178,8 +178,11 @@ bool Swapchain::rebuildRequired() const noexcept { return _rebuildRequired; }
 
 uint32_t Swapchain::acquireImage(VkSemaphore imgAvailableSem) {
 
-  vkAcquireNextImageKHR(_device, _d.swapchain.get(), UINT64_MAX,
-                        imgAvailableSem, VK_NULL_HANDLE, &_currentImgIndx);
+  if (vkAcquireNextImageKHR(_device, _d.swapchain.get(), UINT64_MAX,
+                            imgAvailableSem, VK_NULL_HANDLE,
+                            &_currentImgIndx) == VK_ERROR_OUT_OF_DATE_KHR) {
+    _rebuildRequired = true;
+  };
 
   return _currentImgIndx;
 }

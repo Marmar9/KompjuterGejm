@@ -1,4 +1,5 @@
-## Game written in vulkan 
+## KompjuterGejm
+This project covers vulkan game engine wirtten for android platform.
 ## Building from source
 > [!NOTE]
 > The build was tested on
@@ -9,18 +10,21 @@
 > 
 > android-platform 35
 
-Chose a build target, checkout [build/BUILDCONFIG.GN](https://github.com/Marmar9/KompjuterGejm/blob/master/build/BUILDCONFIG.gn) file.
-Two variables **arch** and **target** allow configuration
-Currently "android" and "linux" targets are supported "x86_64" arch is supported.
-
-If building for android
-
-Create a keystore and key using either android **keytool** (cli) or **android studio**
-
 Export build configuration environment variables 
 
 ```sh
 
+export ARCH= # either 'aarch64' or 'x86-64'
+export TARGET= # 'android' or 'linux'
+export DEBUG= # 'true' if want to enable debuging
+
+
+```
+If building for android
+
+Create a keystore and key using either android **keytool** (cli) or **android studio**
+
+```sh
 export ANDROID_HOME=
 export NDK=
 
@@ -36,8 +40,7 @@ export NDK_LIB_NAME=
 
 ```
 
-If running development build  **debug** variable can be set to enable debug symbols
-validation are also expected in val-layers/$arch/ directory
+If running development build validation layer architecture directiories are expected to live in val-layers/ directory
 
 Finally run 
 

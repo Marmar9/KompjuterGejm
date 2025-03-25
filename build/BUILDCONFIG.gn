@@ -1,10 +1,12 @@
-# target = "linux"
-target = "android"
+target = getenv("TARGET")
 
-arch = "x86_64" 
-# arch = "aarch64"
+arch = getenv("ARCH")
 
-debug = true
+if (getenv("DEBUG") == "true") {
+    debug = true
+} else {
+    debug = false
+}
 
 sdk = getenv("SDK_VERSION")
 

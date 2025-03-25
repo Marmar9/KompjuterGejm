@@ -35,9 +35,15 @@ def run_binary(binary: list[str]) -> int:
 waitpid(run_binary(aapt2),0)
 
 with ZipFile(argv[1], "a") as zipf:
-    zipf.write(argv[3], arcname=f"lib/{argv[2]}/{argv[3]}")
-
-    if (argv[8] == "DEBUG"):
-        zipf.write(f"../val-layers/{argv[2]}/libVkLayer_khronos_validation.so", arcname=f"lib/{argv[2]}/libVkLayer_khronos_validation.so")
+    match argv[2]:
+        case "aarch64":
+            zipf.write(argv[3], arcname=f"lib/arm64-v8a/{argv[3]}")
+            if (len(argv) == 9):
+                zipf.write(f"../val-layers/arm64-v8a/libVkLayer_khronos_validation.so", arcname=f"lib/arm64-v8a/libVkLayer_khronos_validation.so")
+        case "x86-64":
+            zipf.write(argv[3], arcname=f"lib/x86-64/{argv[3]}")
+            if (len(argv) == 9):
+                zipf.write(f"../val-layers/x86-64/libVkLayer_khronos_validation.so", arcname=f"lib/x86-64/libVkLayer_khronos_validation.so")
+    
 
 waitpid(run_binary(apksigner),0)

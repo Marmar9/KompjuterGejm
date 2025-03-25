@@ -36,24 +36,30 @@
 #endif
 
 // Utility
-const char *extensions[] = {VK_KHR_SURFACE_EXTENSION_NAME,
+const char *extensions[] = {
+    VK_KHR_SURFACE_EXTENSION_NAME,
 
 #ifdef ANDROID
-                            VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
+    VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
 #endif
 #ifndef ANDROID
-
-                            VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
+    VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
 #endif
 
-                            "VK_EXT_debug_utils"};
+#ifdef DEBUG
+
+// Disable debug utils extention's custom messanger
+// VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+#endif // DEBUG
+
+};
 
 const char *deviceExtentions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 using namespace renderer;
 
-#ifdef DEBUG
-
 #define E_VK_VERSION VK_API_VERSION_1_0
+
+#ifdef DEBUG
 
 const std::array vLayers = {"VK_LAYER_KHRONOS_validation"};
 
@@ -85,44 +91,45 @@ int check_layers() {
   return 1;
 }
 
-// validationLayers
-static VKAPI_ATTR VkBool32 VKAPI_CALL
-debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-              VkDebugUtilsMessageTypeFlagsEXT messageType,
-              const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-              void *pUserData) {
-  switch (messageSeverity) {
-  case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-    LOG("%s\n", pCallbackData->pMessage);
-    break;
-  case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-    LOG("%s\n", pCallbackData->pMessage);
-    break;
-  case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-    LOG("%s\n", pCallbackData->pMessage);
-    break;
-  case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-    LOG("%s\n", pCallbackData->pMessage);
-    break;
-  default:
-    break;
-  }
-  return VK_FALSE;
-}
-VkResult CreateDebugUtilsMessengerEXT(
-    VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
-    const VkAllocationCallbacks *pAllocator,
-    VkDebugUtilsMessengerEXT *pDebugMessenger) {
-  PFN_vkCreateDebugUtilsMessengerEXT func =
-      (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
-          instance, "vkCreateDebugUtilsMessengerEXT");
-
-  if (func != 0) {
-    return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-  } else {
-    return VK_ERROR_EXTENSION_NOT_PRESENT;
-  }
-}
+// Disable debug utils extention's custom messanger
+// static VKAPI_ATTR VkBool32 VKAPI_CALL
+// debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+//               VkDebugUtilsMessageTypeFlagsEXT messageType,
+//               const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+//               void *pUserData) {
+//   switch (messageSeverity) {
+//   case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+//     LOG("%s\n", pCallbackData->pMessage);
+//     break;
+//   case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+//     LOG("%s\n", pCallbackData->pMessage);
+//     break;
+//   case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+//     LOG("%s\n", pCallbackData->pMessage);
+//     break;
+//   case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+//     LOG("%s\n", pCallbackData->pMessage);
+//     break;
+//   default:
+//     break;
+//   }
+//   return VK_FALSE;
+// }
+//
+// VkResult CreateDebugUtilsMessengerEXT(
+//     VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT
+//     *pCreateInfo, const VkAllocationCallbacks *pAllocator,
+//     VkDebugUtilsMessengerEXT *pDebugMessenger) {
+//   PFN_vkCreateDebugUtilsMessengerEXT func =
+//       (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+//           instance, "vkCreateDebugUtilsMessengerEXT");
+//
+//   if (func != 0) {
+//     return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+//   } else {
+//     return VK_ERROR_EXTENSION_NOT_PRESENT;
+//   }
+// }
 
 #endif // DEBUG
 
@@ -157,6 +164,7 @@ int check_extensions(const char **requiredExtensions,
     // If any required extension is not found, free memory and return 0 (false)
     if (!extensionFound) {
       free(availableExtensions);
+      LOG("Extention %s not found", requiredExtensions[i]);
       return 0;
     }
   }
@@ -262,22 +270,23 @@ void createInstance(VkInstance *instance,
 
 #ifdef DEBUG
   LOG("Enabling layers")
-  // Setup custom callback
-  VkDebugUtilsMessengerCreateInfoEXT debugMessangerCreateInfo = {};
 
-  debugMessangerCreateInfo.sType =
-      VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-  debugMessangerCreateInfo.messageSeverity =
-      VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-      VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-      VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-  debugMessangerCreateInfo.messageType =
-      VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-      VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-      VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-  debugMessangerCreateInfo.pfnUserCallback = debugCallback;
-  debugMessangerCreateInfo.pUserData = 0; // Optional
-                                          //
+  // Disable debug utils extention's custom messanger
+  // VkDebugUtilsMessengerCreateInfoEXT debugMessangerCreateInfo = {};
+
+  // debugMessangerCreateInfo.sType =
+  //     VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+  // debugMessangerCreateInfo.messageSeverity =
+  //     VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+  //     VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+  //     VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+  // debugMessangerCreateInfo.messageType =
+  //     VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+  //     VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+  //     VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+  // debugMessangerCreateInfo.pfnUserCallback = debugCallback;
+  // debugMessangerCreateInfo.pUserData = 0; // Optional
+  //
 
   if (!check_layers()) {
     THROW_EXCEPTION("Validation layers requested, but not available!");
@@ -285,22 +294,25 @@ void createInstance(VkInstance *instance,
 
   createInfo.enabledLayerCount = vLayers.size();
   createInfo.ppEnabledLayerNames = vLayers.data();
-  createInfo.pNext =
-      (VkDebugUtilsMessengerCreateInfoEXT *)&debugMessangerCreateInfo;
+  createInfo.pNext = nullptr;
+
+  // Disable debug utils extention's custom messanger
+  //  createInfo.pNext =
+  //      (VkDebugUtilsMessengerCreateInfoEXT *)&debugMessangerCreateInfo;
 
 #endif // DEBUG
-
   if (vkCreateInstance(&createInfo, 0, instance) != VK_SUCCESS) {
     THROW_EXCEPTION("Vulkan create info failed");
   }
 
 #ifdef DEBUG
 
-  // Create debug messenger
-  if (CreateDebugUtilsMessengerEXT(*instance, &debugMessangerCreateInfo, 0,
-                                   debugMessenger) != VK_SUCCESS) {
-    THROW_EXCEPTION("failed to set up debug messenger!");
-  }
+  // Disable debug utils extention's custom messanger
+  // if (CreateDebugUtilsMessengerEXT(*instance, &debugMessangerCreateInfo, 0,
+  //                                  debugMessenger) != VK_SUCCESS) {
+  //   THROW_EXCEPTION("failed to set up debug messenger!");
+  // }
+
 #endif // DEBUG
 }
 
@@ -525,7 +537,6 @@ Renderer::Renderer(const window::Window &window) : _window(window) {
 
   window.createWindowSurface(_v.instance.get(), &_khr.surface);
 
-  // Pick device
   uint32_t deviceCount = 0;
 
   vkEnumeratePhysicalDevices(_v.instance.get(), &deviceCount, 0);
@@ -540,7 +551,6 @@ Renderer::Renderer(const window::Window &window) : _window(window) {
   vkEnumeratePhysicalDevices(_v.instance.get(), &deviceCount,
                              physicalDevices.get());
 
-  // Check if there is a suitable device
   for (int i = 0; i < deviceCount; i++) {
     if (isDeviceSuitable(physicalDevices.get()[i], _khr.surface.get(),
                          _capabilities)) {
@@ -584,8 +594,8 @@ VkCommandBuffer Renderer::beginFrame() {
 
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  beginInfo.flags = 0;                  // Optional
-  beginInfo.pInheritanceInfo = nullptr; // Optional
+  beginInfo.flags = 0;
+  beginInfo.pInheritanceInfo = nullptr;
 
   if (vkBeginCommandBuffer(_v.cmdBufs.get()[_currentFrameIndex], &beginInfo) !=
       VK_SUCCESS) {

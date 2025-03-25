@@ -1,12 +1,13 @@
+import os
 from sys import argv
 from os import execvp, fork, waitpid,path
 
 glsc = ["glslc","-fshader-stage=fragment",argv[1],"-o",argv[2] + ".spv"]
 
-objcopy = ["objcopy",
+objcopy = [f"{os.environ['NDK']}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objcopy",
            "--input-target","binary",
-           "--output-target","elf64-x86-64",
-           "--binary-architecture","i386:x86-64",
+           "--output-target",f"elf64-{os.environ['ARCH']}",
+           # "--binary-architecture","i386:x86-64",
            "--set-section-alignment",".data=4",
            argv[2] + ".spv",
            argv[2]]
