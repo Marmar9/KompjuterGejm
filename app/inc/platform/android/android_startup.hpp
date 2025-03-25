@@ -4,30 +4,21 @@
 #include "inc/game/game.hpp"
 #include "inc/platform/android/window/android-window.hpp"
 #include "include/game-engine.hpp"
+#include <jni.h>
+#include <pthread.h>
 
-bool flag = true;
-void onAppCmd(struct android_app *app, int msg) {
-  switch (msg) {
-  case APP_CMD_INIT_WINDOW:
-    flag = false;
-    break;
-  }
-}
-
-// adb logcat NativeActivityDemo:* *:S
 void android_main(struct android_app *app) {
   LOG("Logs begin here ----------")
-  app->onAppCmd = onAppCmd;
-  while (flag) {
-    int outEvents;
-    int outFd;
-    int res = ALooper_pollOnce(-1, &outFd, &outEvents, nullptr);
 
-    app->cmdPollSource.process(app, &app->cmdPollSource);
-  }
+  app->onAppCmd = [](struct android_app *app, int msg) {};
+  window::AndroidWindow window = window::AndroidWindow(app);
 
-  window::AndroidWindow window = window::AndroidWindow(app->window);
+  pthread_mutex_lock(&app->mutex);
+  app->running = 1;
+  pthread_mutex_unlock(&app->mutex);
+
+  pthread_cond_signal(&app->cond);
+
   re::GameEngineParams params{};
-
   game::entryPoint(window, params);
 }

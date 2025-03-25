@@ -1,13 +1,14 @@
 #pragma once
 
-#include "android/native_window.h"
 #include "inc/common/window/window-base.hpp"
+#include "inc/platform/android/android_native_app_glue.h"
+
 namespace window {
 class AndroidWindow : public Window {
-  const ANativeWindow *_window;
+  const android_app *_app;
 
 public:
-  AndroidWindow(const ANativeWindow *window);
+  AndroidWindow(const android_app *app);
   ~AndroidWindow();
   void pollEvents() const override;
   void createWindowSurface(VkInstance instance,
