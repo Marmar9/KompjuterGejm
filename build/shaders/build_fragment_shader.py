@@ -4,10 +4,11 @@ from os import execvp, fork, waitpid,path
 
 glsc = ["glslc","-fshader-stage=fragment",argv[1],"-o",argv[2] + ".spv"]
 
-objcopy = [f"{os.environ['NDK']}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objcopy",
+objcopy_bin = f"{os.environ['NDK']}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objcopy" if os.environ["TARGET"] == "android" else "/usr/bin/llvm-objcopy"
+
+objcopy = [objcopy_bin,
            "--input-target","binary",
-           "--output-target",f"elf64-{os.environ['ARCH']}",
-           # "--binary-architecture","i386:x86-64",
+           "--output-target",f"elf64-{os.environ['ARCH'].replace("_","-")}",
            "--set-section-alignment",".data=4",
            argv[2] + ".spv",
            argv[2]]
