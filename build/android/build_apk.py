@@ -1,10 +1,10 @@
 from sys import argv, exit
-from os import execvp, fork, waitpid
+from os import execvp, fork, waitpid, getenv
 from zipfile import ZipFile
 
 aapt2 = ["aapt2","link",
          "-o",argv[1],
-         "-I", "/opt/android-sdk/platforms/android-35/android.jar",
+         "-I", f"/opt/android-sdk/platforms/android-{getenv("SDK_VERSION")}/android.jar",
          "--manifest","AndroidManifest.xml"
          ]
 
