@@ -3,7 +3,7 @@
 #include <span>
 #include <vulkan/vulkan_core.h>
 
-namespace vulkan {
+namespace engine::vulkan {
 
 std::span<uint32_t> loadShader(const char *filename);
 
@@ -13,8 +13,8 @@ std::span<uint32_t> loadShader(const char *filename);
 VkShaderModule createShaderModule(VkDevice device, std::span<uint32_t> code);
 
 class GraphicsPipelineBuilder
-    : vulkan::Buildable<VkShaderModule, VkShaderModule, VkPipelineLayout,
-                        VkPipeline> {
+    : engine::vulkan::Buildable<VkShaderModule, VkShaderModule,
+                                VkPipelineLayout, VkPipeline> {
   VkDevice _device;
   VkRenderPass _renderPass;
   struct {
@@ -42,4 +42,4 @@ public:
              VkPipeline *pipeline) const override;
 };
 
-} // namespace vulkan
+} // namespace engine::vulkan

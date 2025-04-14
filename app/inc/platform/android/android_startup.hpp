@@ -19,6 +19,6 @@ void android_main(struct android_app *app) {
 
   pthread_cond_signal(&app->cond);
 
-  re::GameEngineParams params{};
+  engine::GameEngineParams params{};
   game::entryPoint(window, params);
 }

@@ -6,7 +6,7 @@
 #include <vulkan/vulkan_core.h>
 const constexpr uint8_t framesInFlight = 3;
 
-namespace renderer {
+namespace engine {
 class RendererBase {
 protected:
   RendererBase();
@@ -23,22 +23,22 @@ protected:
   uint8_t _currentFrameIndex;
 
   struct {
-    vulkan::Handle<VkInstance> instance;
+    engine::vulkan::Handle<VkInstance> instance;
     VkPhysicalDevice physicalDevice;
-    vulkan::Handle<VkDevice> device;
+    engine::vulkan::Handle<VkDevice> device;
 
     std::unique_ptr<VkCommandBuffer[]> cmdBufs;
-    vulkan::Handle<VkCommandPool> cmdPool;
+    engine::vulkan::Handle<VkCommandPool> cmdPool;
 
-    vulkan::Handle<VkSemaphore *> imgAvailableSems;
-    vulkan::Handle<VkSemaphore *> renderFiniSems;
-    vulkan::Handle<VkFence *> inFlightFenses;
+    engine::vulkan::Handle<VkSemaphore *> imgAvailableSems;
+    engine::vulkan::Handle<VkSemaphore *> renderFiniSems;
+    engine::vulkan::Handle<VkFence *> inFlightFenses;
 
-    vulkan::Handle<VkFramebuffer *> swapchainFramebufs;
+    engine::vulkan::Handle<VkFramebuffer *> swapchainFramebufs;
   } _v;
   struct {
-    vulkan::Handle<VkDebugUtilsMessengerEXT> debugMessenger;
-    vulkan::Handle<VkSurfaceKHR> surface;
+    engine::vulkan::Handle<VkDebugUtilsMessengerEXT> debugMessenger;
+    engine::vulkan::Handle<VkSurfaceKHR> surface;
   } _khr;
 };
-} // namespace renderer
+} // namespace engine

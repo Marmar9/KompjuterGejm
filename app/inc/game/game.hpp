@@ -3,5 +3,5 @@
 
 namespace game {
 int entryPoint(const window::Window &window,
-               const re::GameEngineParams &params);
+               const engine::GameEngineParams &params);
 }

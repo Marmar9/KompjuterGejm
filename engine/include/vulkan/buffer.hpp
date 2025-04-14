@@ -9,7 +9,7 @@
 
 #include "include/vulkan/handle.hpp"
 
-namespace vulkan {
+namespace engine::vulkan {
 
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
                         VkMemoryPropertyFlags properties);
@@ -17,8 +17,8 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
 template <typename T> class Buffer {
   size_t _sz;
   VkDevice _dev;
-  vulkan::Handle<VkDeviceMemory> _mem;
-  vulkan::Handle<VkBuffer> _buf;
+  engine::vulkan::Handle<VkDeviceMemory> _mem;
+  engine::vulkan::Handle<VkBuffer> _buf;
 
 public:
   Buffer() = default;
@@ -81,4 +81,4 @@ public:
     return bindingDesc;
   }
 };
-} // namespace vulkan
+} // namespace engine::vulkan

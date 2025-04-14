@@ -3,7 +3,7 @@
 #include <cstddef>
 
 #include <vulkan/vulkan_core.h>
-namespace vulkan {
+namespace engine::vulkan {
 
 class Deleter {
   static VkInstance _instance;
@@ -114,4 +114,4 @@ public:
   T **get() const noexcept { return _pointer; }
 };
 
-} // namespace vulkan
+} // namespace engine::vulkan

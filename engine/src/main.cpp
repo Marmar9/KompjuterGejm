@@ -50,26 +50,26 @@ void createRenderPasses(VkDevice device, VkSurfaceFormatKHR const &format,
   renderPassInfo.subpassCount = 1;
   renderPassInfo.pSubpasses = &subpass;
 
-  // renderPassInfo.dependencyCount = 1;
-  // renderPassInfo.pDependencies = &dependency;
+  // enginenderPassInfo.dependencyCount = 1;
+  // enginenderPassInfo.pDependencies = &dependency;
   renderPassInfo.dependencyCount = 0;
   renderPassInfo.pDependencies = nullptr;
 
   if (vkCreateRenderPass(device, &renderPassInfo, nullptr, renderPass) !=
       VK_SUCCESS) {
-    THROW_EXCEPTION("failed to create render pass!");
+    THROW_EXCEPTION("failed to create enginender pass!");
   }
 }
 
-re::GameEngine::GameEngine(const window::Window &window,
-                           const re::GameEngineParams &params)
+engine::GameEngine::GameEngine(const window::Window &window,
+                               const engine::GameEngineParams &params)
     : _window(window) {
-  _renderer.reset(new renderer::Renderer(_window));
+  _renderer.reset(new engine::Renderer(_window));
   vulkan::Deleter::Init(_renderer->getInstance(), _renderer->getDevice());
 
-  _swapchain.reset(new renderer::Swapchain(_window, _renderer->getDevCaps(),
-                                           _renderer->getDevice(),
-                                           _renderer->getSurface()));
+  _swapchain.reset(new engine::Swapchain(_window, _renderer->getDevCaps(),
+                                         _renderer->getDevice(),
+                                         _renderer->getSurface()));
   _renderer->init(_swapchain.get());
   createRenderPasses(_renderer->getDevice(), _swapchain->getFormat(),
                      &_renderPass);
@@ -78,10 +78,6 @@ re::GameEngine::GameEngine(const window::Window &window,
       buf_t{0.0f, -0.5f}, buf_t{0.5f, 0.5f}, buf_t{-0.5f, 0.5f},
       // buf_t{0.0f, 0.5f},
   };
-
-  // Future index buffer
-
-  // uint16_t indicies[] = {0, 1, 2, 2, 3, 0};
 
   // Binding for buffer 1
   _vertBuf.create(STATIC_ARR_LEN(verticies), _renderer->getDevice(),
@@ -92,6 +88,7 @@ re::GameEngine::GameEngine(const window::Window &window,
   _bindings[buf_b] = _vertBuf.get();
 
   std::array<VkVertexInputBindingDescription, 1> bindingDescription{};
+
   bindingDescription[0] =
       _vertBuf.getBindingDesc(buf_b, VK_VERTEX_INPUT_RATE_VERTEX);
 
@@ -131,7 +128,7 @@ re::GameEngine::GameEngine(const window::Window &window,
   _renderer->createSwapchainFramebufs(_swapchain->dims(), _renderPass.get());
 }
 
-void re::GameEngine::loopStart() {
+void engine::GameEngine::loopStart() {
   while (!_window.shouldClose()) {
     VkCommandBuffer cmdBuf = _renderer->beginFrame();
 
@@ -174,4 +171,4 @@ void re::GameEngine::loopStart() {
   }
 }
 
-re::GameEngine::~GameEngine() { vkDeviceWaitIdle(_renderer->getDevice()); }
+engine::GameEngine::~GameEngine() { vkDeviceWaitIdle(_renderer->getDevice()); }

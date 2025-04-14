@@ -4,7 +4,7 @@
 
 #include <cstdlib>
 
-using namespace renderer;
+using namespace engine;
 
 RendererBase::RendererBase() : _v{}, _khr{}, _currentFrameIndex(0) {
   _v.cmdBufs.reset(new VkCommandBuffer[_framesInFlight]());

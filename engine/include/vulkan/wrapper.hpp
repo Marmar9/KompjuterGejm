@@ -1,5 +1,5 @@
 #pragma once
 
-namespace vulkan {
+namespace engine::vulkan {
 class Builder {};
-} // namespace vulkan
+} // namespace engine::vulkan

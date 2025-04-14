@@ -1,6 +1,6 @@
 #pragma once
 
-namespace vulkan {
+namespace engine::vulkan {
 template <typename... Args> class Buildable {
 public:
   Buildable() = default;
@@ -9,4 +9,4 @@ public:
 
   virtual void build(Args *...args) const = 0;
 };
-} // namespace vulkan
+} // namespace engine::vulkan

@@ -6,7 +6,7 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
-namespace renderer {
+namespace engine {
 
 class Renderer : private RendererBase {
 private:
@@ -40,4 +40,4 @@ public:
 
   DeviceCapabilities getDevCaps() const noexcept;
 };
-} // namespace renderer
+} // namespace engine

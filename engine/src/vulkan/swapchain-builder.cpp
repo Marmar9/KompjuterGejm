@@ -3,7 +3,7 @@
 #include "inc/common/loger.h"
 #include <cstring>
 
-using namespace vulkan;
+using namespace engine::vulkan;
 
 SwapchainBuilder::SwapchainBuilder(VkSurfaceKHR surface, VkDevice device)
 
@@ -15,8 +15,8 @@ SwapchainBuilder::SwapchainBuilder(VkSurfaceKHR surface, VkDevice device)
   _createInfo.imageArrayLayers = 1;
 
   // This may change
-  // _createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-  _createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+  _createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+  // _createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
 
   _createInfo.clipped = VK_TRUE;
 }

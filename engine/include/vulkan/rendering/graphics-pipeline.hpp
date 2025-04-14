@@ -3,16 +3,16 @@
 #include "inc/common/loger.h"
 #include "include/vulkan/handle.hpp"
 #include "include/vulkan/rendering/graphics-pipeline-builder.hpp"
-namespace vulkan {
+namespace engine::vulkan {
 class GraphicsPipeline {
 
-  vulkan::Handle<VkShaderModule> _vertShad;
-  vulkan::Handle<VkShaderModule> _fragShad;
-  vulkan::Handle<VkPipelineLayout> _pipelineLay;
-  vulkan::Handle<VkPipeline> _pipeline;
+  engine::vulkan::Handle<VkShaderModule> _vertShad;
+  engine::vulkan::Handle<VkShaderModule> _fragShad;
+  engine::vulkan::Handle<VkPipelineLayout> _pipelineLay;
+  engine::vulkan::Handle<VkPipeline> _pipeline;
 
 public:
-  GraphicsPipeline(const vulkan::GraphicsPipelineBuilder &builder) {
+  GraphicsPipeline(const engine::vulkan::GraphicsPipelineBuilder &builder) {
     builder.build(&_vertShad, &_fragShad, &_pipelineLay, &_pipeline);
   };
   ~GraphicsPipeline(){LOG("Destroyed pipeline")}
@@ -24,4 +24,4 @@ public:
   GraphicsPipeline(const GraphicsPipeline &) = delete;
   GraphicsPipeline(const GraphicsPipeline &&) = delete;
 };
-} // namespace vulkan
+} // namespace engine::vulkan

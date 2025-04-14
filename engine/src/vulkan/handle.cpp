@@ -2,7 +2,7 @@
 #include "inc/common/loger.h"
 #include <vulkan/vulkan_core.h>
 
-using namespace vulkan;
+using namespace engine::vulkan;
 
 VkInstance Deleter::_instance = nullptr;
 VkDevice Deleter::_device = nullptr;

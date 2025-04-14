@@ -1,7 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.h>
 
-namespace renderer {
+namespace engine {
 
 struct SurfaceFormat {
   VkSurfaceFormatKHR *list;
@@ -33,4 +33,4 @@ struct DeviceCapabilities {
   QueueFamilyIndices indices;
 };
 
-} // namespace renderer
+} // namespace engine

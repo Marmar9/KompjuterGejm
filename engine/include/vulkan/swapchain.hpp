@@ -6,7 +6,7 @@
 #include "structures.hpp"
 #include <memory>
 #include <vulkan/vulkan_core.h>
-namespace renderer {
+namespace engine {
 
 class Swapchain {
 private:
@@ -49,4 +49,4 @@ public:
   window::WindowDims dims() const noexcept;
 };
 
-} // namespace renderer
+} // namespace engine

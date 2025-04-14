@@ -4,7 +4,7 @@
 #include <span>
 #include <vulkan/vulkan_core.h>
 
-namespace vulkan {
+namespace engine::vulkan {
 
 class SwapchainBuilder : Buildable<VkSwapchainKHR> {
   VkDevice _device;
@@ -35,4 +35,4 @@ public:
 
   void build(VkSwapchainKHR *swapchain) const override;
 };
-} // namespace vulkan
+} // namespace engine::vulkan

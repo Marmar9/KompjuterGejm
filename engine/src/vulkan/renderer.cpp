@@ -55,7 +55,7 @@ const char *extensions[] = {
 };
 
 const char *deviceExtentions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-using namespace renderer;
+using namespace engine;
 
 #define E_VK_VERSION VK_API_VERSION_1_0
 
@@ -301,8 +301,10 @@ void createInstance(VkInstance *instance,
   //      (VkDebugUtilsMessengerCreateInfoEXT *)&debugMessangerCreateInfo;
 
 #endif // DEBUG
-  if (vkCreateInstance(&createInfo, 0, instance) != VK_SUCCESS) {
-    THROW_EXCEPTION("Vulkan create info failed");
+
+  VkResult res = vkCreateInstance(&createInfo, 0, instance);
+  if (res != VK_SUCCESS) {
+    THROW_EXCEPTION("Vulkan create instance failed, %d", res);
   }
 
 #ifdef DEBUG

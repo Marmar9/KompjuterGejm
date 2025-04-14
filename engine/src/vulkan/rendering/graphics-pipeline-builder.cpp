@@ -21,8 +21,8 @@
 SHADER_INCLUDE(triangle_frag)
 SHADER_INCLUDE(triangle_vert)
 
-VkShaderModule vulkan::createShaderModule(VkDevice device,
-                                          std::span<uint32_t> code) {
+VkShaderModule engine::vulkan::createShaderModule(VkDevice device,
+                                                  std::span<uint32_t> code) {
   VkShaderModuleCreateInfo createInfo{};
   createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
   createInfo.codeSize = code.size();
@@ -36,7 +36,7 @@ VkShaderModule vulkan::createShaderModule(VkDevice device,
   return shaderModule;
 }
 
-namespace vulkan {
+namespace engine::vulkan {
 
 GraphicsPipelineBuilder::GraphicsPipelineBuilder(VkDevice device,
                                                  VkRenderPass renderPass)
@@ -181,4 +181,4 @@ void GraphicsPipelineBuilder::build(VkShaderModule *vertShad,
 
   LOG("--------------------- After --------------------");
 }
-} // namespace vulkan
+} // namespace engine::vulkan

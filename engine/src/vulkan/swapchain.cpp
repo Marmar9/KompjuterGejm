@@ -8,7 +8,7 @@
 #include <utility>
 #include <vulkan/vulkan_core.h>
 
-using namespace renderer;
+using namespace engine;
 
 static int clamp(int value, int min, int max) {
   if (value < min) {

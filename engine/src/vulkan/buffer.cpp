@@ -1,8 +1,8 @@
 #include "include/vulkan/buffer.hpp"
 
-uint32_t vulkan::findMemoryType(VkPhysicalDevice physicalDevice,
-                                uint32_t typeFilter,
-                                VkMemoryPropertyFlags properties) {
+uint32_t engine::vulkan::findMemoryType(VkPhysicalDevice physicalDevice,
+                                        uint32_t typeFilter,
+                                        VkMemoryPropertyFlags properties) {
   VkPhysicalDeviceMemoryProperties memProperties;
   vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 
