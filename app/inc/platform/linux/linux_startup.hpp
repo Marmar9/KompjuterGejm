@@ -6,7 +6,7 @@
 
 int main(int argc, char *argv[]) {
   window::WaylandWindow window = window::WaylandWindow();
-  re::GameEngineParams params{};
+  engine::GameEngineParams params{};
 
   return game::entryPoint(window, params);
 }
