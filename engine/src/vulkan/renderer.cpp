@@ -19,7 +19,7 @@
 #include "inc/common/exception.hpp"
 #include "inc/common/static-arr-len.hpp"
 #include "include/vulkan/handle.hpp"
-#include "include/vulkan/renderer-base.hpp"
+#include "include/vulkan/rendering/graphics-pipeline-builder.hpp"
 #include "include/vulkan/structures.hpp"
 #include "include/vulkan/swapchain.hpp"
 #include "vulkan/vulkan_core.h"
@@ -484,9 +484,58 @@ void Renderer::_createSyncObjects() {
     }
   }
 }
+void Renderer::_createRenderPasses() {
 
-void Renderer::createSwapchainFramebufs(window::WindowDims dims,
-                                        const VkRenderPass renderPass) {
+  VkAttachmentDescription colorAttachment{};
+  colorAttachment.format = _swapchain->getFormat().format;
+
+  colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+  VkAttachmentReference colorAttachmentRef{};
+  colorAttachmentRef.attachment = 0;
+  colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+  VkSubpassDescription subpass{};
+  subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+  subpass.colorAttachmentCount = 1;
+  subpass.pColorAttachments = &colorAttachmentRef;
+
+  // VkSubpassDependency dependency{};
+  // dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+  // dependency.dstSubpass = 0;
+
+  // dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  // dependency.srcAccessMask = 0;
+
+  // dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  // dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+  VkRenderPassCreateInfo renderPassInfo{};
+  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+  renderPassInfo.attachmentCount = 1;
+  renderPassInfo.pAttachments = &colorAttachment;
+  renderPassInfo.subpassCount = 1;
+  renderPassInfo.pSubpasses = &subpass;
+
+  // enginenderPassInfo.dependencyCount = 1;
+  // enginenderPassInfo.pDependencies = &dependency;
+  renderPassInfo.dependencyCount = 0;
+  renderPassInfo.pDependencies = nullptr;
+
+  if (vkCreateRenderPass(_v.device.get(), &renderPassInfo, nullptr,
+                         &_v.renderPass) != VK_SUCCESS) {
+    THROW_EXCEPTION("failed to create enginender pass!");
+  }
+}
+
+void Renderer::_createSwapchainFramebufs(window::WindowDims dims) {
   const vulkan::Handle<VkImageView *> &imgViews = _swapchain->getImageViews();
 
   _v.swapchainFramebufs.reset(new VkFramebuffer[_swapchain->getImageCount()](),
@@ -496,7 +545,7 @@ void Renderer::createSwapchainFramebufs(window::WindowDims dims,
     VkImageView attachments[] = {imgViews[i]};
     VkFramebufferCreateInfo framebufferInfo{};
     framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    framebufferInfo.renderPass = renderPass;
+    framebufferInfo.renderPass = _v.renderPass.get();
     framebufferInfo.attachmentCount = 1;
     framebufferInfo.pAttachments = attachments;
     framebufferInfo.width = dims.width;
@@ -509,7 +558,7 @@ void Renderer::createSwapchainFramebufs(window::WindowDims dims,
     }
   }
 }
-void Renderer::destroySwapchainFramebufs() {
+void Renderer::_destroySwapchainFramebufs() {
   _v.swapchainFramebufs.reset(nullptr, 0);
 };
 
@@ -533,7 +582,14 @@ void Swapchain::present(VkSemaphore imgAvailableSem) {
   }
 }
 
-Renderer::Renderer(const window::Window &window) : _window(window) {
+Renderer::Renderer(const window::Window &window)
+    : _currentFrameIndex(0), _window(window) {
+
+  _v.cmdBufs.reset(new VkCommandBuffer[_framesInFlight]());
+  _v.imgAvailableSems.reset(new VkSemaphore[_framesInFlight](),
+                            _framesInFlight);
+  _v.renderFiniSems.reset(new VkSemaphore[_framesInFlight](), _framesInFlight);
+  _v.inFlightFenses.reset(new VkFence[_framesInFlight](), _framesInFlight);
 
   createInstance(&_v.instance, &_khr.debugMessenger);
 
@@ -565,10 +621,16 @@ Renderer::Renderer(const window::Window &window) : _window(window) {
     THROW_EXCEPTION("failed to find a suitable GPU!");
   }
   createLogicalDevice(_v.physicalDevice, &_capabilities, _v.device);
-};
+  vulkan::Deleter::Init(_v.instance.get(), _v.device.get());
 
-void Renderer::init(Swapchain *swapchain) {
-  _swapchain = swapchain;
+  // After setup
+  _swapchain = new engine::Swapchain(_window, _capabilities, _v.device.get(),
+                                     _khr.surface.get());
+
+  _createRenderPasses();
+  _createSwapchainFramebufs(_swapchain->dims());
+
+  _createGraphicsPipeline();
 
   _createCommandPool();
 
@@ -581,11 +643,61 @@ void Renderer::init(Swapchain *swapchain) {
                    &_graphicsQueue);
 };
 
-VkSurfaceKHR Renderer::getSurface() const noexcept {
-  return _khr.surface.get();
-};
+void Renderer::_createGraphicsPipeline() {
+  buf_t verticies[] = {
+      buf_t{0.0f, -0.5f}, buf_t{0.5f, 0.5f}, buf_t{-0.5f, 0.5f},
+      // buf_t{0.0f, 0.5f},
+  };
 
-VkCommandBuffer Renderer::beginFrame() {
+  // Binding for buffer 1
+  _vertBuf.create(STATIC_ARR_LEN(verticies), _v.device.get(),
+                  _v.physicalDevice);
+
+  _vertBuf.setData(verticies);
+
+  _bindings[buf_b] = _vertBuf.get();
+
+  std::array<VkVertexInputBindingDescription, 1> bindingDescription{};
+
+  bindingDescription[0] =
+      _vertBuf.getBindingDesc(buf_b, VK_VERTEX_INPUT_RATE_VERTEX);
+
+  std::array<VkVertexInputAttributeDescription, 1> attrDescription{};
+  attrDescription[0].binding = buf_b;
+  attrDescription[0].location = 0;
+  attrDescription[0].format = VK_FORMAT_R32G32_SFLOAT;
+  attrDescription[0].offset = 0;
+
+  VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+  inputAssembly.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+  inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+  inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+  VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT,
+                                    VK_DYNAMIC_STATE_SCISSOR};
+
+  VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+  pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  pipelineLayoutInfo.setLayoutCount = 0;            // Optional
+  pipelineLayoutInfo.pSetLayouts = nullptr;         // Optional
+  pipelineLayoutInfo.pushConstantRangeCount = 0;    // Optional
+  pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
+
+  vulkan::GraphicsPipelineBuilder gPipBuilder =
+      vulkan::GraphicsPipelineBuilder(_v.device.get(), _v.renderPass.get());
+
+  gPipBuilder.setExtent(_window.getDims())
+      ->setBindings(bindingDescription, attrDescription)
+      ->setAssemblyTopo(inputAssembly)
+      ->setDynamicStates(dynamicStates)
+      ->setPipelineLayout(pipelineLayoutInfo);
+
+  gPipBuilder.build(&_v._vertShad, &_v._fragShad, &_v._pipelineLay,
+                    &_v._gPipeline);
+}
+
+void Renderer::beginFrame(window::WindowDims dims) {
 
   VkFence waitFences[1]{_v.inFlightFenses[_currentFrameIndex]};
 
@@ -604,10 +716,57 @@ VkCommandBuffer Renderer::beginFrame() {
     THROW_EXCEPTION("failed to begin recording command buffer!");
   }
 
-  return _v.cmdBufs[_currentFrameIndex];
+  _v.currCmdBuf = _v.cmdBufs[_currentFrameIndex];
+
+  if (_swapchain->rebuildRequired() || _swapchain->dims() != dims) {
+    vkDeviceWaitIdle(_v.device.get());
+    _destroySwapchainFramebufs();
+    _swapchain->rebuild(dims);
+    _createSwapchainFramebufs(dims);
+  }
+
+  uint32_t imgIndx =
+      _swapchain->acquireImage(_v.imgAvailableSems[_currentFrameIndex]);
+  VkRenderPassBeginInfo renderPassInfo{};
+  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+  renderPassInfo.renderPass = _v.renderPass.get();
+  renderPassInfo.framebuffer = _v.swapchainFramebufs[imgIndx];
+
+  renderPassInfo.renderArea.offset = {0, 0};
+  renderPassInfo.renderArea.extent = _swapchain->dims();
+
+  VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+  renderPassInfo.clearValueCount = 1;
+  renderPassInfo.pClearValues = &clearColor;
+  vkCmdBeginRenderPass(_v.cmdBufs[_currentFrameIndex], &renderPassInfo,
+                       VK_SUBPASS_CONTENTS_INLINE);
+
+  vkCmdBindPipeline(_v.currCmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    _v._gPipeline.get());
+
+  VkViewport viewport{};
+  viewport.x = 0.0f;
+  viewport.y = 0.0f;
+  viewport.width = static_cast<float>(_swapchain->dims().width);
+  viewport.height = static_cast<float>(_swapchain->dims().height);
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+  vkCmdSetViewport(_v.currCmdBuf, 0, 1, &viewport);
+
+  VkRect2D scissor{};
+  scissor.offset = {0, 0};
+  scissor.extent = _swapchain->dims();
+  vkCmdSetScissor(_v.currCmdBuf, 0, 1, &scissor);
+
+  // Will be moved outside
+
+  vkCmdBindVertexBuffers(_v.currCmdBuf, 0, _bindingCount, _bindings, _offsets);
 };
 
 void Renderer::endFrame() {
+  vkCmdDraw(_v.currCmdBuf, 3, 1, 0, 0);
+
+  vkCmdEndRenderPass(_v.currCmdBuf);
 
   if (vkEndCommandBuffer(_v.cmdBufs[_currentFrameIndex]) != VK_SUCCESS) {
     THROW_EXCEPTION("failed to record command buffer!");
@@ -641,40 +800,11 @@ void Renderer::endFrame() {
   _swapchain->present(_v.renderFiniSems[_currentFrameIndex]);
 
   _currentFrameIndex = (_currentFrameIndex + 1) % _framesInFlight;
+
+  _v.currCmdBuf = nullptr;
 };
 
-uint32_t Renderer::beginRenderPass(VkRenderPass renderPass) {
-  uint32_t imgIndx =
-      _swapchain->acquireImage(_v.imgAvailableSems[_currentFrameIndex]);
-  VkRenderPassBeginInfo renderPassInfo{};
-  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-  renderPassInfo.renderPass = renderPass;
-  renderPassInfo.framebuffer = _v.swapchainFramebufs[imgIndx];
-
-  renderPassInfo.renderArea.offset = {0, 0};
-  renderPassInfo.renderArea.extent = _swapchain->dims();
-
-  VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-  renderPassInfo.clearValueCount = 1;
-  renderPassInfo.pClearValues = &clearColor;
-  vkCmdBeginRenderPass(_v.cmdBufs[_currentFrameIndex], &renderPassInfo,
-                       VK_SUBPASS_CONTENTS_INLINE);
-  return imgIndx;
-};
-
-void Renderer::endRenderPass(VkRenderPass renderPass) {
-
-};
-
-DeviceCapabilities Renderer::getDevCaps() const noexcept {
-  return _capabilities;
-};
-
-VkPhysicalDevice Renderer::getPhysicalDevice() const noexcept {
-  return _v.physicalDevice;
-};
-VkDevice Renderer::getDevice() const noexcept { return _v.device.get(); };
-
-VkInstance Renderer::getInstance() const noexcept { return _v.instance.get(); };
-
-Renderer::~Renderer() { vkQueueWaitIdle(_graphicsQueue); }
+Renderer::~Renderer() {
+  vkQueueWaitIdle(_graphicsQueue);
+  vkDeviceWaitIdle(_v.device.get());
+}

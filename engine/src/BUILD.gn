@@ -31,7 +31,6 @@ static_library("engine") {
     "main.cpp",
     "vulkan/buffer.cpp",
     "vulkan/handle.cpp",
-    "vulkan/renderer-base.cpp",
     "vulkan/renderer.cpp",
     "vulkan/rendering/graphics-pipeline-builder.cpp",
     "vulkan/swapchain-builder.cpp",
