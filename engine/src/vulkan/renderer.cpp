@@ -3,8 +3,10 @@
 #include "inc/common/loger.h"
 #include "inc/common/window/window-base.hpp"
 #include <array>
+#include <cstring>
 #include <fcntl.h>
 #include <memory>
+#include <span>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,6 +20,7 @@
 
 #include "inc/common/exception.hpp"
 #include "inc/common/static-arr-len.hpp"
+#include "include/vulkan/buffer.hpp"
 #include "include/vulkan/handle.hpp"
 #include "include/vulkan/rendering/graphics-pipeline-builder.hpp"
 #include "include/vulkan/structures.hpp"
@@ -396,10 +399,10 @@ void Renderer::_createCommandBuffers() {
   allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   allocInfo.commandPool = _v.cmdPool.get();
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandBufferCount = _framesInFlight;
+  allocInfo.commandBufferCount = FramesInFlight;
 
-  if (vkAllocateCommandBuffers(_v.device.get(), &allocInfo, _v.cmdBufs.get()) !=
-      VK_SUCCESS) {
+  if (vkAllocateCommandBuffers(_v.device.get(), &allocInfo,
+                               _v.cmdBufs.data()) != VK_SUCCESS) {
     THROW_EXCEPTION("failed to allocate command buffers!");
   }
 }
@@ -472,7 +475,7 @@ void Renderer::_createSyncObjects() {
   VkFenceCreateInfo fenceInfo{};
   fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
   fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-  for (int i = 0; i < _framesInFlight; i++) {
+  for (int i = 0; i < FramesInFlight; i++) {
     if (vkCreateSemaphore(_v.device.get(), &semaphoreInfo, nullptr,
                           &_v.imgAvailableSems[i]) != VK_SUCCESS ||
         vkCreateSemaphore(_v.device.get(), &semaphoreInfo, nullptr,
@@ -503,7 +506,6 @@ void Renderer::_createRenderPasses() {
 
   VkSubpassDescription subpass{};
   subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-
   subpass.colorAttachmentCount = 1;
   subpass.pColorAttachments = &colorAttachmentRef;
 
@@ -536,10 +538,10 @@ void Renderer::_createRenderPasses() {
 }
 
 void Renderer::_createSwapchainFramebufs(window::WindowDims dims) {
-  const vulkan::Handle<VkImageView *> &imgViews = _swapchain->getImageViews();
+  std::span<VkImageView> imgViews = _swapchain->getImageViews();
 
-  _v.swapchainFramebufs.reset(new VkFramebuffer[_swapchain->getImageCount()](),
-                              _swapchain->getImageCount());
+  _v.swapchainFramebufs =
+      std::span(new VkFramebuffer[imgViews.size()], imgViews.size());
 
   for (size_t i = 0; i < _swapchain->getImageCount(); i++) {
     VkImageView attachments[] = {imgViews[i]};
@@ -551,7 +553,6 @@ void Renderer::_createSwapchainFramebufs(window::WindowDims dims) {
     framebufferInfo.width = dims.width;
     framebufferInfo.height = dims.height;
     framebufferInfo.layers = 1;
-
     if (vkCreateFramebuffer(_v.device.get(), &framebufferInfo, nullptr,
                             &_v.swapchainFramebufs[i]) != VK_SUCCESS) {
       THROW_EXCEPTION("failed to create framebuffer!");
@@ -559,7 +560,7 @@ void Renderer::_createSwapchainFramebufs(window::WindowDims dims) {
   }
 }
 void Renderer::_destroySwapchainFramebufs() {
-  _v.swapchainFramebufs.reset(nullptr, 0);
+  _v.swapchainFramebufs = std::span<VkFramebuffer>();
 };
 
 void Swapchain::present(VkSemaphore imgAvailableSem) {
@@ -584,12 +585,6 @@ void Swapchain::present(VkSemaphore imgAvailableSem) {
 
 Renderer::Renderer(const window::Window &window)
     : _currentFrameIndex(0), _window(window) {
-
-  _v.cmdBufs.reset(new VkCommandBuffer[_framesInFlight]());
-  _v.imgAvailableSems.reset(new VkSemaphore[_framesInFlight](),
-                            _framesInFlight);
-  _v.renderFiniSems.reset(new VkSemaphore[_framesInFlight](), _framesInFlight);
-  _v.inFlightFenses.reset(new VkFence[_framesInFlight](), _framesInFlight);
 
   createInstance(&_v.instance, &_khr.debugMessenger);
 
@@ -624,8 +619,8 @@ Renderer::Renderer(const window::Window &window)
   vulkan::Deleter::Init(_v.instance.get(), _v.device.get());
 
   // After setup
-  _swapchain = new engine::Swapchain(_window, _capabilities, _v.device.get(),
-                                     _khr.surface.get());
+  _swapchain.reset(new engine::Swapchain(_window, _capabilities,
+                                         _v.device.get(), _khr.surface.get()));
 
   _createRenderPasses();
   _createSwapchainFramebufs(_swapchain->dims());
@@ -644,29 +639,27 @@ Renderer::Renderer(const window::Window &window)
 };
 
 void Renderer::_createGraphicsPipeline() {
-  buf_t verticies[] = {
-      buf_t{0.0f, -0.5f}, buf_t{0.5f, 0.5f}, buf_t{-0.5f, 0.5f},
-      // buf_t{0.0f, 0.5f},
+
+  vulkan::MyVertex verticies[] = {
+      {0.0f, -0.5f},
+      {0.5f, 0.5f},
+      {-0.5f, 0.5f},
   };
 
   // Binding for buffer 1
-  _vertBuf.create(STATIC_ARR_LEN(verticies), _v.device.get(),
-                  _v.physicalDevice);
+  _vertBuf.reset(new vulkan::VertexBuffer<vulkan::MyVertex>(
+      _v.device.get(), _v.physicalDevice, STATIC_ARR_LEN(verticies)));
 
-  _vertBuf.setData(verticies);
+  std::span<vulkan::MyVertex> dataPtr = _vertBuf->data();
+  memcpy(dataPtr.data(), verticies, sizeof(verticies));
 
-  _bindings[buf_b] = _vertBuf.get();
+  _vBuffers[0] = _vertBuf->handle();
 
-  std::array<VkVertexInputBindingDescription, 1> bindingDescription{};
+  std::array<VkVertexInputBindingDescription, 1> bindingDescription{
+      _vertBuf->binding()};
 
-  bindingDescription[0] =
-      _vertBuf.getBindingDesc(buf_b, VK_VERTEX_INPUT_RATE_VERTEX);
-
-  std::array<VkVertexInputAttributeDescription, 1> attrDescription{};
-  attrDescription[0].binding = buf_b;
-  attrDescription[0].location = 0;
-  attrDescription[0].format = VK_FORMAT_R32G32_SFLOAT;
-  attrDescription[0].offset = 0;
+  std::array<VkVertexInputAttributeDescription, 1> attrDescription{
+      _vertBuf->attributes()[0]};
 
   VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
   inputAssembly.sType =
@@ -698,7 +691,6 @@ void Renderer::_createGraphicsPipeline() {
 }
 
 void Renderer::beginFrame(window::WindowDims dims) {
-
   VkFence waitFences[1]{_v.inFlightFenses[_currentFrameIndex]};
 
   vkWaitForFences(_v.device.get(), 1, waitFences, VK_TRUE, UINT64_MAX);
@@ -710,8 +702,7 @@ void Renderer::beginFrame(window::WindowDims dims) {
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.flags = 0;
   beginInfo.pInheritanceInfo = nullptr;
-
-  if (vkBeginCommandBuffer(_v.cmdBufs.get()[_currentFrameIndex], &beginInfo) !=
+  if (vkBeginCommandBuffer(_v.cmdBufs[_currentFrameIndex], &beginInfo) !=
       VK_SUCCESS) {
     THROW_EXCEPTION("failed to begin recording command buffer!");
   }
@@ -760,12 +751,12 @@ void Renderer::beginFrame(window::WindowDims dims) {
 
   // Will be moved outside
 
-  vkCmdBindVertexBuffers(_v.currCmdBuf, 0, _bindingCount, _bindings, _offsets);
+  vkCmdBindVertexBuffers(_v.currCmdBuf, 0, _vertexBuffCount, _vBuffers,
+                         _offsets);
 };
 
 void Renderer::endFrame() {
   vkCmdDraw(_v.currCmdBuf, 3, 1, 0, 0);
-
   vkCmdEndRenderPass(_v.currCmdBuf);
 
   if (vkEndCommandBuffer(_v.cmdBufs[_currentFrameIndex]) != VK_SUCCESS) {
@@ -775,13 +766,9 @@ void Renderer::endFrame() {
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-  VkPipelineStageFlags waitStages[] = {
-
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-
   VkSemaphore waitSems[1]{_v.imgAvailableSems[_currentFrameIndex]};
-  VkSemaphore signalSems[1]{_v.renderFiniSems[_currentFrameIndex]};
-
+  VkPipelineStageFlags waitStages[] = {
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
   submitInfo.waitSemaphoreCount = 1;
   submitInfo.pWaitSemaphores = waitSems;
   submitInfo.pWaitDstStageMask = waitStages;
@@ -789,6 +776,7 @@ void Renderer::endFrame() {
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &_v.cmdBufs[_currentFrameIndex];
 
+  VkSemaphore signalSems[1]{_v.renderFiniSems[_currentFrameIndex]};
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = signalSems;
 
@@ -799,12 +787,9 @@ void Renderer::endFrame() {
 
   _swapchain->present(_v.renderFiniSems[_currentFrameIndex]);
 
-  _currentFrameIndex = (_currentFrameIndex + 1) % _framesInFlight;
+  _currentFrameIndex = (_currentFrameIndex + 1) % FramesInFlight;
 
   _v.currCmdBuf = nullptr;
 };
 
-Renderer::~Renderer() {
-  vkQueueWaitIdle(_graphicsQueue);
-  vkDeviceWaitIdle(_v.device.get());
-}
+Renderer::~Renderer() { vkDeviceWaitIdle(_v.device.get()); }

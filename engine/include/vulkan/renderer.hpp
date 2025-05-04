@@ -3,27 +3,20 @@
 #include "include/vulkan/handle.hpp"
 #include "include/vulkan/structures.hpp"
 #include "include/vulkan/swapchain.hpp"
+#include <array>
 #include <glm/glm.hpp>
+#include <memory>
+#include <span>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
 namespace engine {
 
-const constexpr uint8_t framesInFlight = 3;
-
 class Renderer {
   DeviceCapabilities _capabilities;
 
-  const uint8_t _framesInFlight = 3;
-  uint8_t _currentFrameIndex;
-
-  using buf_t = glm::vec2;
-  static constexpr uint32_t buf_b = 0;
-  engine::vulkan::Buffer<buf_t> _vertBuf;
-
-  static constexpr uint32_t _bindingCount = 1;
-  VkBuffer _bindings[_bindingCount] = {};
-  VkDeviceSize _offsets[_bindingCount] = {};
+  static constexpr uint8_t FramesInFlight = 3;
+  uint8_t _currentFrameIndex = 1;
 
   struct {
     engine::vulkan::Handle<VkInstance> instance;
@@ -31,21 +24,33 @@ class Renderer {
     engine::vulkan::Handle<VkDevice> device;
 
     engine::vulkan::Handle<VkRenderPass> renderPass;
-    engine::vulkan::Handle<VkFramebuffer *> swapchainFramebufs;
+    engine::vulkan::Handle<std::span<VkFramebuffer>> swapchainFramebufs;
 
     engine::vulkan::Handle<VkShaderModule> _vertShad;
     engine::vulkan::Handle<VkShaderModule> _fragShad;
     engine::vulkan::Handle<VkPipelineLayout> _pipelineLay;
     engine::vulkan::Handle<VkPipeline> _gPipeline;
 
-    std::unique_ptr<VkCommandBuffer[]> cmdBufs;
+    std::array<VkCommandBuffer, FramesInFlight> cmdBufs;
+
     VkCommandBuffer currCmdBuf;
     engine::vulkan::Handle<VkCommandPool> cmdPool;
 
-    engine::vulkan::Handle<VkSemaphore *> imgAvailableSems;
-    engine::vulkan::Handle<VkSemaphore *> renderFiniSems;
-    engine::vulkan::Handle<VkFence *> inFlightFenses;
+    engine::vulkan::Handle<std::array<VkSemaphore, FramesInFlight>>
+        imgAvailableSems;
+    engine::vulkan::Handle<std::array<VkSemaphore, FramesInFlight>>
+        renderFiniSems;
+    engine::vulkan::Handle<std::array<VkFence, FramesInFlight>> inFlightFenses;
+    engine::vulkan::Handle<std::array<VkFence, FramesInFlight>>
+        vertexReadDoneFence;
+
   } _v;
+
+  static constexpr uint32_t _vertexBuffCount = 1;
+  std::unique_ptr<vulkan::VertexBuffer<vulkan::MyVertex>> _vertBuf;
+
+  VkBuffer _vBuffers[_vertexBuffCount] = {};
+  VkDeviceSize _offsets[_vertexBuffCount] = {};
 
   struct {
     engine::vulkan::Handle<VkDebugUtilsMessengerEXT> debugMessenger;
@@ -53,7 +58,7 @@ class Renderer {
   } _khr;
 
   const window::Window &_window;
-  Swapchain *_swapchain;
+  std::unique_ptr<Swapchain> _swapchain;
   VkQueue _graphicsQueue;
 
   void _createCommandPool();

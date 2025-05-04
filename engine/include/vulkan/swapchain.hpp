@@ -5,6 +5,7 @@
 #include "include/vulkan/swapchain-builder.hpp"
 #include "structures.hpp"
 #include <memory>
+#include <span>
 #include <vulkan/vulkan_core.h>
 namespace engine {
 
@@ -27,7 +28,7 @@ private:
   struct {
     vulkan::Handle<VkSwapchainKHR> swapchain;
     vulkan::Handle<VkSwapchainKHR> oldSwapchain;
-    vulkan::Handle<VkImageView *> imageViews;
+    vulkan::Handle<std::span<VkImageView>> imageViews;
     VkQueue presentQueue;
   } _d;
   bool _rebuildRequired = true;
@@ -43,7 +44,7 @@ public:
   void present(VkSemaphore imgAvailableSem);
   void rebuild(window::WindowDims dims);
   bool rebuildRequired() const noexcept;
-  const vulkan::Handle<VkImageView *> &getImageViews() const noexcept;
+  std::span<VkImageView> getImageViews() const noexcept;
 
   VkSurfaceFormatKHR getFormat() const noexcept;
   window::WindowDims dims() const noexcept;

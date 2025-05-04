@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 
+#include <span>
 #include <vulkan/vulkan_core.h>
 namespace engine::vulkan {
 
@@ -68,50 +70,66 @@ public:
   T *get() const noexcept { return _pointer; }
 };
 
-template <typename T> class Handle<T **> {
-  size_t _sz;
-  T **_pointer;
+template <typename T, std::size_t N> class Handle<std::array<T, N>> {
+  std::array<T, N> _array{};
 
 public:
-  Handle() { _pointer = nullptr; };
+  Handle(){};
   Handle(const Handle &&) = delete;
   Handle(const Handle &) = delete;
   const Handle &operator=(size_t) = delete;
 
   ~Handle() {
-    if (_pointer) {
-      for (size_t i = 0; i < _sz; ++i) {
-        if (_pointer[i]) {
-          Deleter::operator()(_pointer[i]);
-          _pointer[i] = nullptr;
-        }
+    for (size_t i = 0; i < N; ++i) {
+      if (_array[i]) {
+        Deleter::operator()(_array[i]);
+        _array[i] = nullptr;
       }
-      _pointer = nullptr;
     }
   }
 
   // Access array elements
-  T *&operator[](size_t i) const noexcept { return _pointer[i]; }
+  T &operator[](size_t i) noexcept { return _array[i]; }
 
-  void move(Handle &&source) noexcept {
-    _pointer = source._pointer;
-    _sz = source._sz;
-    source._pointer = nullptr;
-  }
+  T *get() const noexcept { return _array.data(); }
+};
 
-  void reset(T **source, size_t sz) noexcept {
-    if (_pointer) {
-      for (size_t i = 0; i < _sz; ++i) {
-        if (_pointer[i]) {
-          Deleter::operator()(_pointer[i]);
+template <typename T> class Handle<std::span<T>> {
+  std::span<T> _array;
+
+public:
+  Handle(){};
+  Handle(const Handle &&) = delete;
+  Handle(const Handle &) = delete;
+  Handle &operator=(std::span<T> data) {
+    if (_array.size() > 0) {
+      for (size_t i = 0; i < _array.size(); ++i) {
+        if (_array[i]) {
+          Deleter::operator()(_array[i]);
+          _array[i] = nullptr;
         }
       }
     }
-    _pointer = source;
-    _sz = sz;
+
+    _array = data;
+    return *this;
+  };
+
+  ~Handle() {
+    if (_array.size() > 0) {
+      for (size_t i = 0; i < _array.size(); ++i) {
+        if (_array[i]) {
+          Deleter::operator()(_array[i]);
+          _array[i] = nullptr;
+        }
+      }
+    }
   }
 
-  T **get() const noexcept { return _pointer; }
+  // Access array elements
+  T &operator[](size_t i) noexcept { return _array[i]; }
+
+  T *get() const noexcept { return _array.data(); }
 };
 
 } // namespace engine::vulkan

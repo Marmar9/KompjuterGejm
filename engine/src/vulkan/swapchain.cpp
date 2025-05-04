@@ -4,7 +4,7 @@
 #include "inc/common/loger.h"
 #include "include/vulkan/handle.hpp"
 #include "include/vulkan/swapchain-builder.hpp"
-#include <cmath>
+#include <span>
 #include <utility>
 #include <vulkan/vulkan_core.h>
 
@@ -71,9 +71,11 @@ window::WindowDims chooseSwapExtent(const SwapChainSupportDetails &details,
 }
 
 void Swapchain::_createImageViews() {
-  _d.imageViews.reset(new VkImageView[_imageCount](), _imageCount);
+  _d.imageViews =
+      std::span<VkImageView>(new VkImageView[_imageCount](), _imageCount);
 
   VkImage *images = new VkImage[_imageCount]();
+
   vkGetSwapchainImagesKHR(_device, _d.swapchain.get(), &_imageCount, images);
 
   for (size_t i = 0; i < _imageCount; i++) {
@@ -108,8 +110,8 @@ void Swapchain::_createImageViews() {
 Swapchain::Swapchain(const window::Window &window,
                      const DeviceCapabilities &capabilities, VkDevice device,
                      VkSurfaceKHR surface)
-    : _window(window), _deviceCapabilities(capabilities), _surface(surface),
-      _device(device), _d{} {
+    : _window(window), _deviceCapabilities(capabilities), _device(device),
+      _surface(surface), _d{} {
 
   vkGetDeviceQueue(_device, _deviceCapabilities.indices.presentationFamily, 0,
                    &_d.presentQueue);
@@ -157,8 +159,7 @@ Swapchain::Swapchain(const window::Window &window,
 
 void Swapchain::rebuild(window::WindowDims dims) {
   _extent = dims;
-
-  _d.imageViews.reset(nullptr, 0);
+  _d.imageViews = std::span<VkImageView, 0>();
 
   _d.oldSwapchain.move(std::move(_d.swapchain));
 
@@ -193,8 +194,8 @@ VkSurfaceFormatKHR Swapchain::getFormat() const noexcept { return _format; };
 
 uint32_t Swapchain::getImageCount() const { return _imageCount; };
 
-const vulkan::Handle<VkImageView *> &Swapchain::getImageViews() const noexcept {
-  return _d.imageViews;
+std::span<VkImageView> Swapchain::getImageViews() const noexcept {
+  return std::span<VkImageView>(_d.imageViews.get(), _imageCount);
 };
 
 Swapchain::~Swapchain() noexcept {

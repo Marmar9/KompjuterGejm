@@ -1,42 +1,31 @@
 #pragma once
 
+#include "include/vulkan/handle.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <inc/common/exception.hpp>
-#include <span>
+#include <include/vulkan/vertex.hpp>
 #include <vulkan/vulkan_core.h>
-
-#include "include/vulkan/handle.hpp"
-
 namespace engine::vulkan {
 
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
                         VkMemoryPropertyFlags properties);
 
-template <typename T> class Buffer {
-  size_t _sz;
+template <CVertex V> class VertexBuffer {
   VkDevice _dev;
-  engine::vulkan::Handle<VkDeviceMemory> _mem;
   engine::vulkan::Handle<VkBuffer> _buf;
+  engine::vulkan::Handle<VkDeviceMemory> _mem;
+  size_t _count;
+  std::span<V> _data;
 
 public:
-  Buffer() = default;
-  ~Buffer() = default;
-
-  void create(size_t sz, VkDevice dev, VkPhysicalDevice physicalDevice) {
-    _sz = sz;
-    _dev = dev;
-
-    VkBufferCreateInfo bufferInfo{};
-    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = sizeof(T) * _sz;
-    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    if (vkCreateBuffer(dev, &bufferInfo, nullptr, &_buf) != VK_SUCCESS) {
-      THROW_EXCEPTION("failed to create vertex buffer!");
-    }
+  VertexBuffer(VkDevice dev, VkPhysicalDevice phys, std::size_t count)
+      : _dev(dev), _count(count) {
+    VkBufferCreateInfo bi{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    bi.size = sizeof(V) * _count;
+    bi.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    vkCreateBuffer(dev, &bi, nullptr, &_buf);
 
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(_dev, _buf.get(), &memRequirements);
@@ -46,7 +35,7 @@ public:
     memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memAllocInfo.allocationSize = memRequirements.size;
     memAllocInfo.memoryTypeIndex =
-        findMemoryType(physicalDevice, memRequirements.memoryTypeBits,
+        findMemoryType(phys, memRequirements.memoryTypeBits,
                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -57,28 +46,21 @@ public:
     }
 
     vkBindBufferMemory(dev, _buf.get(), _mem.get(), 0);
-  }
-
-  VkBuffer get() { return _buf.get(); }
-
-  void setData(std::span<T> data) {
-    if (data.size() != _sz) {
-      THROW_EXCEPTION("Data size is difrent than buffer size");
-    }
 
     void *mMem;
-    vkMapMemory(_dev, _mem.get(), 0, _sz, 0, &mMem);
-    std::memcpy(mMem, data.data(), sizeof(T) * _sz);
-    vkUnmapMemory(_dev, _mem.get());
+    vkMapMemory(_dev, _mem.get(), 0, _count * sizeof(V), 0, &mMem);
+
+    _data = std::span<V>(reinterpret_cast<V *>(mMem), _count);
   }
 
-  VkVertexInputBindingDescription getBindingDesc(uint32_t binding,
-                                                 VkVertexInputRate inputRate) {
-    VkVertexInputBindingDescription bindingDesc;
-    bindingDesc.binding = binding;
-    bindingDesc.stride = sizeof(T);
-    bindingDesc.inputRate = inputRate;
-    return bindingDesc;
-  }
+  const std::span<V> &data() const noexcept { return _data; }
+
+  VkBuffer handle() const noexcept { return _buf.get(); }
+  size_t count() const noexcept { return _count; }
+  static constexpr auto binding() { return V::describeBinding(); }
+  static constexpr auto attributes() { return V::describeAttributes(); }
+
+  ~VertexBuffer() { vkUnmapMemory(_dev, _mem.get()); }
 };
+
 } // namespace engine::vulkan

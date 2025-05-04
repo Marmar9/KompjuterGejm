@@ -1,5 +1,4 @@
 #include "include/vulkan/handle.hpp"
-#include "inc/common/loger.h"
 #include <vulkan/vulkan_core.h>
 
 using namespace engine::vulkan;
