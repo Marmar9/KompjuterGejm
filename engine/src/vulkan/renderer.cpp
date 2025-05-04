@@ -482,7 +482,6 @@ void Renderer::_createSyncObjects() {
                           &_v.renderFiniSems[i]) != VK_SUCCESS ||
         vkCreateFence(_v.device.get(), &fenceInfo, nullptr,
                       &_v.inFlightFenses[i]) != VK_SUCCESS) {
-
       THROW_EXCEPTION("failed to create semaphores!");
     }
   }
@@ -689,12 +688,14 @@ void Renderer::_createGraphicsPipeline() {
   gPipBuilder.build(&_v._vertShad, &_v._fragShad, &_v._pipelineLay,
                     &_v._gPipeline);
 }
-
-void Renderer::beginFrame(window::WindowDims dims) {
+void Renderer::poll() {
   VkFence waitFences[1]{_v.inFlightFenses[_currentFrameIndex]};
 
   vkWaitForFences(_v.device.get(), 1, waitFences, VK_TRUE, UINT64_MAX);
   vkResetFences(_v.device.get(), 1, waitFences);
+}
+
+void Renderer::beginFrame(window::WindowDims dims) {
 
   vkResetCommandBuffer(_v.cmdBufs[_currentFrameIndex], 0);
 
@@ -765,7 +766,6 @@ void Renderer::endFrame() {
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
   VkSemaphore waitSems[1]{_v.imgAvailableSems[_currentFrameIndex]};
   VkPipelineStageFlags waitStages[] = {
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};

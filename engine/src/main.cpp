@@ -1,3 +1,4 @@
+#include "inc/common/exception.hpp"
 #include "inc/common/window/window-dims.hpp"
 #include "include/game-engine.hpp"
 #include <cstdlib>
@@ -13,10 +14,16 @@ engine::GameEngine::GameEngine(const window::Window &window,
 }
 
 void engine::GameEngine::loopStart() {
+  if (!this->onRefreshCallback) {
+    THROW_EXCEPTION("Renderer::onRefreshCallback is not initialized");
+  }
+
   while (!_window.shouldClose()) {
-    // this->onRefreshCallback();
 
     window::WindowDims curDims = _window.getDims();
+    _renderer->poll();
+    this->onRefreshCallback();
+
     _renderer->beginFrame(curDims);
 
     _renderer->endFrame();

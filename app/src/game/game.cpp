@@ -7,6 +7,11 @@ int game::entryPoint(const window::Window &window,
 
   try {
     engine::GameEngine engine(window, params);
+
+    engine.onRefreshCallback = []() {
+
+    };
+
     engine.loopStart();
     return 0;
   } catch (utils::Error e) {

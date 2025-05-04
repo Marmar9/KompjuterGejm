@@ -74,8 +74,9 @@ public:
   Renderer(const window::Window &);
   ~Renderer();
   void init(Swapchain *swapchain);
-
+  void poll();
   void beginFrame(window::WindowDims dims);
+
   void endFrame();
 };
 } // namespace engine

@@ -25,14 +25,11 @@ private:
 
   using OnRefreshCallback_T = void (*)();
 
-  OnRefreshCallback_T onRefreshCallback;
-
 public:
+  OnRefreshCallback_T onRefreshCallback = nullptr;
   explicit GameEngine(const window::Window &window,
                       const GameEngineParams &params);
   ~GameEngine();
-
-  void setBefRefreshCallback(OnRefreshCallback_T callback);
 
   void loopStart();
 };
