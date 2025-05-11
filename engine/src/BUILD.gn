@@ -35,6 +35,8 @@ static_library("engine") {
     "vulkan/rendering/graphics-pipeline-builder.cpp",
     "vulkan/swapchain-builder.cpp",
     "vulkan/swapchain.cpp",
+    "ecs/drawing-service.cpp",
+    "ecs/entity-manager.cpp",
 ]
     configs = ["//build:${target}_config","//build:common_config"]
     arflags = shader_outputs

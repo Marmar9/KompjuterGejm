@@ -1,9 +1,13 @@
+#pragma once
 #include "inc/common/window/window-base.hpp"
+#include "include/ecs/core.hpp"
 #include "include/vulkan/buffer.hpp"
 #include "include/vulkan/handle.hpp"
 #include "include/vulkan/structures.hpp"
 #include "include/vulkan/swapchain.hpp"
+#include "include/vulkan/vertex.hpp"
 #include <array>
+#include <cstddef>
 #include <glm/glm.hpp>
 #include <memory>
 #include <span>
@@ -11,7 +15,9 @@
 #include <vulkan/vulkan_core.h>
 
 namespace engine {
-
+using RectangleVBuff =
+    vulkan::VertexBuffer<vulkan::Vertex,
+                         vulkan::InstanceData::VertCount * ecs::entity_max>;
 class Renderer {
   DeviceCapabilities _capabilities;
 
@@ -47,7 +53,7 @@ class Renderer {
   } _v;
 
   static constexpr uint32_t _vertexBuffCount = 1;
-  std::unique_ptr<vulkan::VertexBuffer<vulkan::MyVertex>> _vertBuf;
+  std::unique_ptr<RectangleVBuff> _vertBuf;
 
   VkBuffer _vBuffers[_vertexBuffCount] = {};
   VkDeviceSize _offsets[_vertexBuffCount] = {};
@@ -77,6 +83,9 @@ public:
   void poll();
   void beginFrame(window::WindowDims dims);
 
+  void render(uint32_t firstV, uint32_t vCount);
   void endFrame();
+
+  RectangleVBuff &getBuffer();
 };
 } // namespace engine

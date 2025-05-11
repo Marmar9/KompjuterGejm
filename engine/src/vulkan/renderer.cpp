@@ -25,6 +25,7 @@
 #include "include/vulkan/rendering/graphics-pipeline-builder.hpp"
 #include "include/vulkan/structures.hpp"
 #include "include/vulkan/swapchain.hpp"
+#include "include/vulkan/vertex.hpp"
 #include "vulkan/vulkan_core.h"
 
 #ifdef ANDROID
@@ -582,6 +583,48 @@ void Swapchain::present(VkSemaphore imgAvailableSem) {
   }
 }
 
+void Renderer::_createGraphicsPipeline() {
+
+  // Binding for buffer 1
+  _vertBuf.reset(new RectangleVBuff(_v.device.get(), _v.physicalDevice));
+
+  _vBuffers[0] = _vertBuf->handle();
+
+  std::array<VkVertexInputBindingDescription, 1> bindingDescription{
+      _vertBuf->binding()};
+
+  std::array<VkVertexInputAttributeDescription, 1> attrDescription{
+      _vertBuf->attributes()[0]};
+
+  VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+  inputAssembly.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+  inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+  inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+  VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT,
+                                    VK_DYNAMIC_STATE_SCISSOR};
+
+  VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+  pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  pipelineLayoutInfo.setLayoutCount = 0;            // Optional
+  pipelineLayoutInfo.pSetLayouts = nullptr;         // Optional
+  pipelineLayoutInfo.pushConstantRangeCount = 0;    // Optional
+  pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
+
+  vulkan::GraphicsPipelineBuilder gPipBuilder =
+      vulkan::GraphicsPipelineBuilder(_v.device.get(), _v.renderPass.get());
+
+  gPipBuilder.setExtent(_window.getDims())
+      ->setBindings(bindingDescription, attrDescription)
+      ->setAssemblyTopo(inputAssembly)
+      ->setDynamicStates(dynamicStates)
+      ->setPipelineLayout(pipelineLayoutInfo);
+
+  gPipBuilder.build(&_v._vertShad, &_v._fragShad, &_v._pipelineLay,
+                    &_v._gPipeline);
+}
+
 Renderer::Renderer(const window::Window &window)
     : _currentFrameIndex(0), _window(window) {
 
@@ -637,57 +680,6 @@ Renderer::Renderer(const window::Window &window)
                    &_graphicsQueue);
 };
 
-void Renderer::_createGraphicsPipeline() {
-
-  vulkan::MyVertex verticies[] = {
-      {0.0f, -0.5f},
-      {0.5f, 0.5f},
-      {-0.5f, 0.5f},
-  };
-
-  // Binding for buffer 1
-  _vertBuf.reset(new vulkan::VertexBuffer<vulkan::MyVertex>(
-      _v.device.get(), _v.physicalDevice, STATIC_ARR_LEN(verticies)));
-
-  std::span<vulkan::MyVertex> dataPtr = _vertBuf->data();
-  memcpy(dataPtr.data(), verticies, sizeof(verticies));
-
-  _vBuffers[0] = _vertBuf->handle();
-
-  std::array<VkVertexInputBindingDescription, 1> bindingDescription{
-      _vertBuf->binding()};
-
-  std::array<VkVertexInputAttributeDescription, 1> attrDescription{
-      _vertBuf->attributes()[0]};
-
-  VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
-  inputAssembly.sType =
-      VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-  inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-  inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-  VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT,
-                                    VK_DYNAMIC_STATE_SCISSOR};
-
-  VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-  pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  pipelineLayoutInfo.setLayoutCount = 0;            // Optional
-  pipelineLayoutInfo.pSetLayouts = nullptr;         // Optional
-  pipelineLayoutInfo.pushConstantRangeCount = 0;    // Optional
-  pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
-
-  vulkan::GraphicsPipelineBuilder gPipBuilder =
-      vulkan::GraphicsPipelineBuilder(_v.device.get(), _v.renderPass.get());
-
-  gPipBuilder.setExtent(_window.getDims())
-      ->setBindings(bindingDescription, attrDescription)
-      ->setAssemblyTopo(inputAssembly)
-      ->setDynamicStates(dynamicStates)
-      ->setPipelineLayout(pipelineLayoutInfo);
-
-  gPipBuilder.build(&_v._vertShad, &_v._fragShad, &_v._pipelineLay,
-                    &_v._gPipeline);
-}
 void Renderer::poll() {
   VkFence waitFences[1]{_v.inFlightFenses[_currentFrameIndex]};
 
@@ -730,6 +722,21 @@ void Renderer::beginFrame(window::WindowDims dims) {
   VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
   renderPassInfo.clearValueCount = 1;
   renderPassInfo.pClearValues = &clearColor;
+
+  // VkBufferMemoryBarrier bufBarrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+  // bufBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+  // bufBarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+  // bufBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  // bufBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  // bufBarrier.buffer = _vertBuf.get()->handle();
+  // bufBarrier.offset = 396 * sizeof(vulkan::Vertex);
+  // bufBarrier.size = 4 * sizeof(vulkan::Vertex);
+
+  // vkCmdPipelineBarrier(_v.cmdBufs[_currentFrameIndex],
+  //                      VK_PIPELINE_STAGE_HOST_BIT,
+  //                      VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1,
+  //                      &bufBarrier, 0, nullptr);
+
   vkCmdBeginRenderPass(_v.cmdBufs[_currentFrameIndex], &renderPassInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
 
@@ -755,9 +762,13 @@ void Renderer::beginFrame(window::WindowDims dims) {
   vkCmdBindVertexBuffers(_v.currCmdBuf, 0, _vertexBuffCount, _vBuffers,
                          _offsets);
 };
+void Renderer::render(uint32_t firstV, uint32_t vCount) {
+  // vkCmdDraw(_v.currCmdBuf, 4, 1, vulkan::offset, 0);
+  LOG("Drawing at: %d", firstV);
+  vkCmdDraw(_v.currCmdBuf, vCount, 1, firstV, 0);
+};
 
 void Renderer::endFrame() {
-  vkCmdDraw(_v.currCmdBuf, 3, 1, 0, 0);
   vkCmdEndRenderPass(_v.currCmdBuf);
 
   if (vkEndCommandBuffer(_v.cmdBufs[_currentFrameIndex]) != VK_SUCCESS) {
@@ -791,5 +802,7 @@ void Renderer::endFrame() {
 
   _v.currCmdBuf = nullptr;
 };
+
+RectangleVBuff &Renderer::getBuffer() { return *_vertBuf.get(); };
 
 Renderer::~Renderer() { vkDeviceWaitIdle(_v.device.get()); }
