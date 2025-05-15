@@ -5,6 +5,8 @@
 #include "inc/common/window/window-dims.hpp"
 #include "protocol.h"
 #include "xdg-shell-protocol.h"
+#include <atomic>
+#include <sys/types.h>
 #include <vulkan/vulkan_core.h>
 #include <wayland-client-core.h>
 
@@ -20,6 +22,7 @@ struct WaylandContext {
   struct wl_compositor *comp;
 
   struct wl_surface *srfc;
+  struct wl_callback *cback;
   struct xdg_wm_base *xdg;
   struct xdg_surface *xdg_srfc;
   struct xdg_toplevel *xdg_toplevel;
@@ -28,18 +31,24 @@ struct WaylandContext {
 WaylandContext *create_window();
 
 class WaylandWindow : public window::Window {
-private:
-  WaylandContext *_ctx;
-
 public:
+  WaylandContext *_ctx;
   WindowDims dims;
   WindowDims desiredDims;
   bool closed = false;
 
+  std::atomic<bool> frameReady;
+#ifdef DEBUG
+  unsigned long lastTimestamp;
+#endif // DEBUG
+
+  static_assert(std::atomic<int>::is_always_lock_free,
+                "Atomic<int> is not lock-free on this platform!");
+
   WaylandWindow();
   ~WaylandWindow();
 
-  void pollEvents() const override;
+  void pollEvents() override;
   void createWindowSurface(VkInstance instance,
                            VkSurfaceKHR *surface) const override;
   bool shouldClose() const noexcept override;

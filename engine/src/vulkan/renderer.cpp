@@ -762,9 +762,9 @@ void Renderer::beginFrame(window::WindowDims dims) {
   vkCmdBindVertexBuffers(_v.currCmdBuf, 0, _vertexBuffCount, _vBuffers,
                          _offsets);
 };
+
 void Renderer::render(uint32_t firstV, uint32_t vCount) {
   // vkCmdDraw(_v.currCmdBuf, 4, 1, vulkan::offset, 0);
-  LOG("Drawing at: %d", firstV);
   vkCmdDraw(_v.currCmdBuf, vCount, 1, firstV, 0);
 };
 

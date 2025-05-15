@@ -1,7 +1,11 @@
 #include "inc/platform/linux/window/wayland-window.hpp"
 #include "inc/common/exception.hpp"
 #include "inc/common/loger.h"
+#include "inc/platform/linux/window/protocol.h"
 #include "inc/platform/linux/window/wayland-deleter.hpp"
+#include "inc/platform/linux/window/xdg-shell-protocol.h"
+#include <chrono>
+#include <cstdint>
 #include <errno.h>
 #include <fcntl.h>
 #include <memory.h>
@@ -57,6 +61,31 @@ static void xdg_surface_configure(void *data, struct xdg_surface *xdg_surface,
 
 struct xdg_surface_listener srfc_list = {.configure = xdg_surface_configure};
 
+// Frame callback listener
+static void surface_frame_done(void *data, struct wl_callback *, uint32_t);
+static wl_callback_listener surface_cb_list{.done = surface_frame_done};
+
+static void surface_frame_done(void *data, struct wl_callback *,
+                               uint32_t number) {
+  using namespace std::chrono;
+
+  WaylandWindow *self = static_cast<WaylandWindow *>(data);
+#ifdef DEBUG
+  uint64_t currentTimestamp = static_cast<unsigned long>(
+      duration_cast<nanoseconds>(steady_clock::now().time_since_epoch())
+          .count());
+  LOG("FrameRate: %.2f",
+      1000000000.0f / (currentTimestamp - self->lastTimestamp));
+  self->lastTimestamp = currentTimestamp;
+#endif // DEBUG
+
+  self->frameReady.store(true);
+
+  wl_callback_destroy(self->_ctx->cback);
+  self->_ctx->cback = wl_surface_frame(self->_ctx->srfc);
+  wl_callback_add_listener(self->_ctx->cback, &surface_cb_list, self);
+}
+
 // Xdg toplevel listener
 static void xdg_toplevel_configure(void *data, struct xdg_toplevel *, int nw,
 
@@ -105,37 +134,46 @@ WaylandWindow::WaylandWindow() : dims{1, 1}, desiredDims{1, 1} {
   wl_display_roundtrip(_ctx->disp);
 
   _ctx->srfc = wl_compositor_create_surface(_ctx->comp);
+  // Request frame callback
+  _ctx->cback = wl_surface_frame(_ctx->srfc);
+  wl_callback_add_listener(_ctx->cback, &surface_cb_list, this);
+
   _ctx->xdg_srfc = xdg_wm_base_get_xdg_surface(_ctx->xdg, _ctx->srfc);
   xdg_surface_add_listener(_ctx->xdg_srfc, &srfc_list, this);
   _ctx->xdg_toplevel = xdg_surface_get_toplevel(_ctx->xdg_srfc);
+
   // Needed for true window dimentions
   xdg_toplevel_add_listener(_ctx->xdg_toplevel, &toplevel_list, this);
+  xdg_toplevel_set_max_size(_ctx->xdg_toplevel, 1000, 500);
 
   wl_surface_commit(_ctx->srfc);
 
-  // Wait untill window dimentions become available
-  wl_display_roundtrip(_ctx->disp);
+  frameReady.store(false);
+  LOG("After");
 }
 
-void WaylandWindow::pollEvents() const {
-  while (wl_display_prepare_read(_ctx->disp)) {
-    wl_display_dispatch_pending(_ctx->disp);
-  }
+void WaylandWindow::pollEvents() {
+  while (!frameReady.load()) {
+    while (wl_display_prepare_read(_ctx->disp)) {
+      wl_display_dispatch_pending(_ctx->disp);
+    }
 
-  while (wl_display_flush(_ctx->disp) < 0 && EAGAIN == errno) {
-    poll_single(wl_display_get_fd(_ctx->disp), POLLOUT, -1);
-  }
+    while (wl_display_flush(_ctx->disp) < 0 && EAGAIN == errno) {
+      poll_single(wl_display_get_fd(_ctx->disp), POLLOUT, -1);
+    }
 
-  if (POLLIN & poll_single(wl_display_get_fd(_ctx->disp), POLLIN, 0)) {
-    wl_display_read_events(_ctx->disp);
-    wl_display_dispatch_pending(_ctx->disp);
-  } else {
-    wl_display_cancel_read(_ctx->disp);
-  }
+    if (POLLIN & poll_single(wl_display_get_fd(_ctx->disp), POLLIN, 0)) {
+      wl_display_read_events(_ctx->disp);
+      wl_display_dispatch_pending(_ctx->disp);
+    } else {
+      wl_display_cancel_read(_ctx->disp);
+    }
 
-  if (wl_display_get_error(_ctx->disp)) {
-    THROW_EXCEPTION("Wayland protocol error");
+    if (wl_display_get_error(_ctx->disp)) {
+      THROW_EXCEPTION("Wayland protocol error");
+    }
   }
+  frameReady.store(false);
 };
 
 void WaylandWindow::createWindowSurface(VkInstance instance,

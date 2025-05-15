@@ -5,7 +5,7 @@
 #include "include/game-engine.hpp"
 
 using namespace engine;
-int game::entryPoint(const window::Window &window,
+int game::entryPoint(window::Window &window,
                      const engine::GameEngineParams &params) {
 
   try {

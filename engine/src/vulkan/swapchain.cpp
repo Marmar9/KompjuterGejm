@@ -23,11 +23,12 @@ static int clamp(int value, int min, int max) {
 VkPresentModeKHR
 chooseSwapPresentMode(const SwapChainSupportDetails &details) noexcept {
   for (int i = 0; i < details.presentModes.count; i++) {
-    if (details.presentModes.list[i] == VK_PRESENT_MODE_FIFO_KHR) {
+    if (details.presentModes.list[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
 
       return details.presentModes.list[i];
     }
   }
+
   LOG("Chosing default present mode")
   return VK_PRESENT_MODE_FIFO_KHR;
 }

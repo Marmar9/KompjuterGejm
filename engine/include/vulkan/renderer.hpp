@@ -76,6 +76,8 @@ class Renderer {
   void _createSwapchainFramebufs(window::WindowDims dims);
   void _destroySwapchainFramebufs();
 
+  void _createDescriptorLayout();
+
 public:
   Renderer(const window::Window &);
   ~Renderer();

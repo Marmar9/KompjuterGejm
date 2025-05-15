@@ -2,6 +2,5 @@
 #include "include/game-engine.hpp"
 
 namespace game {
-int entryPoint(const window::Window &window,
-               const engine::GameEngineParams &params);
+int entryPoint(window::Window &window, const engine::GameEngineParams &params);
 }

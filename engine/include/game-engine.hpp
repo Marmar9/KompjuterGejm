@@ -29,7 +29,7 @@ class GameEngine {
 private:
   std::unique_ptr<vulkan::SwapchainBuilder> _swapchainBuilder;
 
-  const window::Window &_window;
+  window::Window &_window;
   std::unique_ptr<engine::Renderer> _renderer;
 
   std::unique_ptr<engine::Swapchain> _swapchain;
@@ -39,8 +39,7 @@ private:
 
 public:
   OnRefreshCallback_T onRefreshCallback = nullptr;
-  explicit GameEngine(const window::Window &window,
-                      const GameEngineParams &params);
+  explicit GameEngine(window::Window &window, const GameEngineParams &params);
   ~GameEngine();
   void setContext(LoopContext ctx);
   void loopStart();
