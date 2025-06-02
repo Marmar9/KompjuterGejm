@@ -1,21 +1,58 @@
 #include "inc/platform/android/window/android-window.hpp"
 #include "inc/common/exception.hpp"
-#include "unistd.h"
+#include "inc/common/loger.h"
 #include "vulkan/vulkan_android.h"
+#include <android/choreographer.h>
 #include <android/native_window.h>
+#include <atomic>
 namespace window {
 
-AndroidWindow::AndroidWindow(const android_app *app) : _app(app){};
+#ifdef DEBUG
+unsigned long lastTimestamp;
+#endif // DEBUG
+
+std::atomic<bool> frameReady;
+
+static_assert(std::atomic<int>::is_always_lock_free,
+              "Atomic<int> is not lock-free on this platform!");
+
+void FrameCallback(long frameTimeNanos, void *data) {
+  std::atomic<bool> &frameReady = *static_cast<std::atomic<bool> *>(data);
+
+#ifdef DEBUG
+  float fps = 1e9f / (float)(frameTimeNanos - lastTimestamp);
+  lastTimestamp = frameTimeNanos;
+  LOG("Fps-------------------: %.2f --------------------", fps);
+#endif // DEBUG
+
+  frameReady.store(true);
+}
+
+AndroidWindow::AndroidWindow(const android_app *app) : _app(app) {
+  frameReady.store(false);
+  AChoreographer_postFrameCallback64(AChoreographer_getInstance(),
+                                     FrameCallback, &frameReady);
+};
 
 AndroidWindow::~AndroidWindow(){};
-void AndroidWindow::pollEvents() const { usleep(100); };
+void AndroidWindow::pollEvents() {
+  while (!frameReady.load()) {
+    int outEvents;
+    int outFd;
+    ALooper_pollOnce(-1, &outFd, &outEvents, nullptr);
+  }
+
+  frameReady.store(false);
+  AChoreographer_postFrameCallback64(AChoreographer_getInstance(),
+                                     FrameCallback, &frameReady);
+};
 
 void AndroidWindow::createWindowSurface(VkInstance instance,
                                         VkSurfaceKHR *surface) const {
   while (!_app->window) {
     int outEvents;
     int outFd;
-    int res = ALooper_pollOnce(-1, &outFd, &outEvents, nullptr);
+    ALooper_pollOnce(-1, &outFd, &outEvents, nullptr);
     _app->cmdPollSource.process(
         const_cast<android_app *>(_app),
         const_cast<android_poll_source *>(&_app->cmdPollSource));

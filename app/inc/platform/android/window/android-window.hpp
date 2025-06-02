@@ -10,7 +10,7 @@ class AndroidWindow : public Window {
 public:
   AndroidWindow(const android_app *app);
   ~AndroidWindow();
-  void pollEvents() const override;
+  void pollEvents() override;
   void createWindowSurface(VkInstance instance,
                            VkSurfaceKHR *surface) const override;
   bool shouldClose() const noexcept override;
