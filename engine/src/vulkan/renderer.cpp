@@ -366,7 +366,6 @@ void createLogicalDevice(VkPhysicalDevice physicalDevice,
     queueCreateInfo[1].queueCount = 1;
 
     queueCreateInfo[1].pQueuePriorities = &queuePriority;
-
     createInfo.pQueueCreateInfos = queueCreateInfo;
     createInfo.queueCreateInfoCount = 2;
   }

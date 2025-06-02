@@ -15,8 +15,8 @@ SwapchainBuilder::SwapchainBuilder(VkSurfaceKHR surface, VkDevice device)
   _createInfo.imageArrayLayers = 1;
 
   // This may change
-  _createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-  // _createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+  // _createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+  _createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
 
   _createInfo.clipped = VK_TRUE;
 }
@@ -69,7 +69,7 @@ SwapchainBuilder *SwapchainBuilder::setQueueFamilies(
 
   _createInfo.pQueueFamilyIndices = _pQueueFamilies.get();
 
-  if (queueFamilyIndices.size() == 1) {
+  if (queueFamilyIndices[0] == queueFamilyIndices[1]) {
     _createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
   } else {
     _createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
