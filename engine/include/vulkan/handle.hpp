@@ -26,6 +26,8 @@ public:
   static void operator()(VkSurfaceKHR resource) noexcept;
   static void operator()(VkSemaphore resource) noexcept;
   static void operator()(VkFence resource) noexcept;
+  static void operator()(VkDescriptorPool resource) noexcept;
+  static void operator()(VkDescriptorSetLayout resource) noexcept;
   static void operator()(VkPipelineLayout resource) noexcept;
   static void operator()(VkRenderPass resource) noexcept;
   static void operator()(VkPipeline resource) noexcept;
@@ -67,7 +69,7 @@ public:
     _pointer = source;
   }
 
-  T *get() const noexcept { return _pointer; }
+  T *&get() noexcept { return _pointer; }
 };
 
 template <typename T, std::size_t N> class Handle<std::array<T, N>> {

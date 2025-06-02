@@ -1,10 +1,16 @@
 #include "include/vulkan/renderer.hpp"
 
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/fwd.hpp"
+#include "glm/geometric.hpp"
+#include "glm/trigonometric.hpp"
 #include "inc/common/loger.h"
 #include "inc/common/window/window-base.hpp"
 #include <array>
+#include <cmath>
 #include <cstring>
 #include <fcntl.h>
+#include <iostream>
 #include <memory>
 #include <span>
 #include <stdint.h>
@@ -27,6 +33,8 @@
 #include "include/vulkan/swapchain.hpp"
 #include "include/vulkan/vertex.hpp"
 #include "vulkan/vulkan_core.h"
+#include <glm/gtc/matrix_transform.hpp>
+#include <utility>
 
 #ifdef ANDROID
 
@@ -586,15 +594,46 @@ void Swapchain::present(VkSemaphore imgAvailableSem) {
 void Renderer::_createGraphicsPipeline() {
 
   // Binding for buffer 1
-  _vertBuf.reset(new RectangleVBuff(_v.device.get(), _v.physicalDevice));
-
-  _vBuffers[0] = _vertBuf->handle();
+  for (uint32_t i = 0; i < FramesInFlight; i++) {
+    _vertBufs[i].reset(new RectangleVBuff(_v.device.get(), _v.physicalDevice));
+    _uniformBufs[i].reset(
+        new TransformUBuff(_v.device.get(), _v.physicalDevice));
+  }
 
   std::array<VkVertexInputBindingDescription, 1> bindingDescription{
-      _vertBuf->binding()};
+      _vertBufs[0]->binding()};
 
   std::array<VkVertexInputAttributeDescription, 1> attrDescription{
-      _vertBuf->attributes()[0]};
+      _vertBufs[0]->attributes()[0]};
+
+  VkDescriptorSetLayoutBinding uboLayoutBinding{};
+  uboLayoutBinding.binding = 0;
+  uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  uboLayoutBinding.descriptorCount = 1;
+  uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+  uboLayoutBinding.pImmutableSamplers = nullptr; // Optional
+
+  VkDescriptorSetLayoutCreateInfo layoutInfo{};
+  layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  layoutInfo.bindingCount = 1;
+  layoutInfo.pBindings = &uboLayoutBinding;
+
+  if (vkCreateDescriptorSetLayout(_v.device.get(), &layoutInfo, nullptr,
+                                  &_v.descriptorSetLay) != VK_SUCCESS) {
+    THROW_EXCEPTION("failed to create descriptor set layout!");
+  }
+
+  VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+  pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  pipelineLayoutInfo.setLayoutCount = 1;
+  pipelineLayoutInfo.pSetLayouts = &_v.descriptorSetLay;
+  pipelineLayoutInfo.pushConstantRangeCount = 0;
+  pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+  if (vkCreatePipelineLayout(_v.device.get(), &pipelineLayoutInfo, nullptr,
+                             &_v._pipelineLay) != VK_SUCCESS) {
+    THROW_EXCEPTION("Cant Create pipeline layout");
+  };
 
   VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
   inputAssembly.sType =
@@ -604,13 +643,6 @@ void Renderer::_createGraphicsPipeline() {
 
   VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT,
                                     VK_DYNAMIC_STATE_SCISSOR};
-
-  VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-  pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  pipelineLayoutInfo.setLayoutCount = 0;            // Optional
-  pipelineLayoutInfo.pSetLayouts = nullptr;         // Optional
-  pipelineLayoutInfo.pushConstantRangeCount = 0;    // Optional
-  pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 
   vulkan::GraphicsPipelineBuilder gPipBuilder =
       vulkan::GraphicsPipelineBuilder(_v.device.get(), _v.renderPass.get());
@@ -624,6 +656,58 @@ void Renderer::_createGraphicsPipeline() {
   gPipBuilder.build(&_v._vertShad, &_v._fragShad, &_v._pipelineLay,
                     &_v._gPipeline);
 }
+
+void Renderer::_createDescriptorStorage() {
+  VkDescriptorPoolSize poolSize{};
+  poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  poolSize.descriptorCount = static_cast<uint32_t>(FramesInFlight);
+
+  VkDescriptorPoolCreateInfo poolInfo{};
+  poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  poolInfo.poolSizeCount = 1;
+  poolInfo.pPoolSizes = &poolSize;
+
+  poolInfo.maxSets = static_cast<uint32_t>(FramesInFlight);
+
+  if (vkCreateDescriptorPool(_v.device.get(), &poolInfo, nullptr,
+                             &_v.descrPool) != VK_SUCCESS) {
+    THROW_EXCEPTION("failed to create descriptor pool!");
+  }
+
+  std::vector<VkDescriptorSetLayout> layouts(FramesInFlight,
+                                             _v.descriptorSetLay.get());
+  VkDescriptorSetAllocateInfo allocInfo{};
+  allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  allocInfo.descriptorPool = _v.descrPool.get();
+  allocInfo.descriptorSetCount = static_cast<uint32_t>(FramesInFlight);
+  allocInfo.pSetLayouts = layouts.data();
+
+  if (vkAllocateDescriptorSets(_v.device.get(), &allocInfo,
+                               _v.descrSets.data()) != VK_SUCCESS) {
+    THROW_EXCEPTION("failed to allocate descriptor sets!");
+  }
+
+  for (size_t i = 0; i < FramesInFlight; i++) {
+
+    VkDescriptorBufferInfo bufferInfo{};
+    bufferInfo.buffer = _uniformBufs[i]->handle();
+    bufferInfo.offset = 0;
+    bufferInfo.range = VK_WHOLE_SIZE;
+
+    VkWriteDescriptorSet descriptorWrite{};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = _v.descrSets[i];
+    descriptorWrite.dstBinding = 0;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+    descriptorWrite.pImageInfo = nullptr;       // Optional
+    descriptorWrite.pTexelBufferView = nullptr; // Optional
+
+    vkUpdateDescriptorSets(_v.device.get(), 1, &descriptorWrite, 0, nullptr);
+  }
+};
 
 Renderer::Renderer(const window::Window &window)
     : _currentFrameIndex(0), _window(window) {
@@ -668,6 +752,7 @@ Renderer::Renderer(const window::Window &window)
   _createSwapchainFramebufs(_swapchain->dims());
 
   _createGraphicsPipeline();
+  _createDescriptorStorage();
 
   _createCommandPool();
 
@@ -699,8 +784,6 @@ void Renderer::beginFrame(window::WindowDims dims) {
       VK_SUCCESS) {
     THROW_EXCEPTION("failed to begin recording command buffer!");
   }
-
-  _v.currCmdBuf = _v.cmdBufs[_currentFrameIndex];
 
   if (_swapchain->rebuildRequired() || _swapchain->dims() != dims) {
     vkDeviceWaitIdle(_v.device.get());
@@ -740,8 +823,8 @@ void Renderer::beginFrame(window::WindowDims dims) {
   vkCmdBeginRenderPass(_v.cmdBufs[_currentFrameIndex], &renderPassInfo,
                        VK_SUBPASS_CONTENTS_INLINE);
 
-  vkCmdBindPipeline(_v.currCmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    _v._gPipeline.get());
+  vkCmdBindPipeline(_v.cmdBufs[_currentFrameIndex],
+                    VK_PIPELINE_BIND_POINT_GRAPHICS, _v._gPipeline.get());
 
   VkViewport viewport{};
   viewport.x = 0.0f;
@@ -750,26 +833,45 @@ void Renderer::beginFrame(window::WindowDims dims) {
   viewport.height = static_cast<float>(_swapchain->dims().height);
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
-  vkCmdSetViewport(_v.currCmdBuf, 0, 1, &viewport);
+  vkCmdSetViewport(_v.cmdBufs[_currentFrameIndex], 0, 1, &viewport);
 
   VkRect2D scissor{};
   scissor.offset = {0, 0};
   scissor.extent = _swapchain->dims();
-  vkCmdSetScissor(_v.currCmdBuf, 0, 1, &scissor);
+  vkCmdSetScissor(_v.cmdBufs[_currentFrameIndex], 0, 1, &scissor);
 
-  // Will be moved outside
+  vkCmdBindVertexBuffers(_v.cmdBufs[_currentFrameIndex], 0, _VertexBuffPerFrame,
+                         &_vertBufs[_currentFrameIndex]->handle(), _offsets);
 
-  vkCmdBindVertexBuffers(_v.currCmdBuf, 0, _vertexBuffCount, _vBuffers,
-                         _offsets);
+  // Frame independent animation
+
+  // static auto startTime = std::chrono::high_resolution_clock::now();
+
+  // auto currentTime = std::chrono::high_resolution_clock::now();
+  // float time = std::chrono::duration<float, std::chrono::seconds::period>(
+  //                  currentTime - startTime)
+  //                  .count();
+
+  TransformUBO ubo{};
+
+  ubo.model = glm::mat4(1.f);
+  ubo.camera = glm::mat4(1.f);
+  ubo.perspective = glm::mat4(1.f);
+
+  _uniformBufs[_currentFrameIndex]->data()[0] = ubo;
+
+  vkCmdBindDescriptorSets(_v.cmdBufs[_currentFrameIndex],
+                          VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          _v._pipelineLay.get(), 0, 1,
+                          &_v.descrSets[_currentFrameIndex], 0, nullptr);
 };
 
 void Renderer::render(uint32_t firstV, uint32_t vCount) {
-  // vkCmdDraw(_v.currCmdBuf, 4, 1, vulkan::offset, 0);
-  vkCmdDraw(_v.currCmdBuf, vCount, 1, firstV, 0);
+  vkCmdDraw(_v.cmdBufs[_currentFrameIndex], vCount, 1, firstV, 0);
 };
 
 void Renderer::endFrame() {
-  vkCmdEndRenderPass(_v.currCmdBuf);
+  vkCmdEndRenderPass(_v.cmdBufs[_currentFrameIndex]);
 
   if (vkEndCommandBuffer(_v.cmdBufs[_currentFrameIndex]) != VK_SUCCESS) {
     THROW_EXCEPTION("failed to record command buffer!");
@@ -799,10 +901,14 @@ void Renderer::endFrame() {
   _swapchain->present(_v.renderFiniSems[_currentFrameIndex]);
 
   _currentFrameIndex = (_currentFrameIndex + 1) % FramesInFlight;
-
-  _v.currCmdBuf = nullptr;
 };
 
-RectangleVBuff &Renderer::getBuffer() { return *_vertBuf.get(); };
+std::span<engine::vulkan::Vertex> const Renderer::getVertBuffer() noexcept {
+  return _vertBufs[_currentFrameIndex]->data();
+};
+
+std::span<TransformUBO> const Renderer::getUniBuffer() noexcept {
+  return _uniformBufs[_currentFrameIndex]->data();
+};
 
 Renderer::~Renderer() { vkDeviceWaitIdle(_v.device.get()); }

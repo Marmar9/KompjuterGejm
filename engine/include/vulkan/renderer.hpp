@@ -1,4 +1,5 @@
 #pragma once
+#define GLM_FORCE_RADIANS
 #include "inc/common/window/window-base.hpp"
 #include "include/ecs/core.hpp"
 #include "include/vulkan/buffer.hpp"
@@ -7,7 +8,6 @@
 #include "include/vulkan/swapchain.hpp"
 #include "include/vulkan/vertex.hpp"
 #include <array>
-#include <cstddef>
 #include <glm/glm.hpp>
 #include <memory>
 #include <span>
@@ -15,13 +15,23 @@
 #include <vulkan/vulkan_core.h>
 
 namespace engine {
+struct TransformUBO {
+  glm::mat4 model;
+  glm::mat4 camera;
+  glm::mat4 perspective;
+};
+
 using RectangleVBuff =
     vulkan::VertexBuffer<vulkan::Vertex,
                          vulkan::InstanceData::VertCount * ecs::entity_max>;
+
+using TransformUBuff = vulkan::UniformBuffer<TransformUBO, 1>;
+
 class Renderer {
   DeviceCapabilities _capabilities;
 
   static constexpr uint8_t FramesInFlight = 3;
+  static constexpr uint32_t _VertexBuffPerFrame = 1;
   uint8_t _currentFrameIndex = 1;
 
   struct {
@@ -34,13 +44,15 @@ class Renderer {
 
     engine::vulkan::Handle<VkShaderModule> _vertShad;
     engine::vulkan::Handle<VkShaderModule> _fragShad;
+    engine::vulkan::Handle<VkDescriptorSetLayout> descriptorSetLay;
     engine::vulkan::Handle<VkPipelineLayout> _pipelineLay;
     engine::vulkan::Handle<VkPipeline> _gPipeline;
 
-    std::array<VkCommandBuffer, FramesInFlight> cmdBufs;
+    vulkan::Handle<VkDescriptorPool> descrPool;
+    std::array<VkDescriptorSet, FramesInFlight> descrSets;
 
-    VkCommandBuffer currCmdBuf;
     engine::vulkan::Handle<VkCommandPool> cmdPool;
+    std::array<VkCommandBuffer, FramesInFlight> cmdBufs;
 
     engine::vulkan::Handle<std::array<VkSemaphore, FramesInFlight>>
         imgAvailableSems;
@@ -52,11 +64,10 @@ class Renderer {
 
   } _v;
 
-  static constexpr uint32_t _vertexBuffCount = 1;
-  std::unique_ptr<RectangleVBuff> _vertBuf;
+  std::array<std::unique_ptr<RectangleVBuff>, FramesInFlight> _vertBufs;
+  std::array<std::unique_ptr<TransformUBuff>, FramesInFlight> _uniformBufs;
 
-  VkBuffer _vBuffers[_vertexBuffCount] = {};
-  VkDeviceSize _offsets[_vertexBuffCount] = {};
+  VkDeviceSize _offsets[_VertexBuffPerFrame] = {};
 
   struct {
     engine::vulkan::Handle<VkDebugUtilsMessengerEXT> debugMessenger;
@@ -73,6 +84,7 @@ class Renderer {
 
   void _createRenderPasses();
   void _createGraphicsPipeline();
+  void _createDescriptorStorage();
   void _createSwapchainFramebufs(window::WindowDims dims);
   void _destroySwapchainFramebufs();
 
@@ -88,6 +100,7 @@ public:
   void render(uint32_t firstV, uint32_t vCount);
   void endFrame();
 
-  RectangleVBuff &getBuffer();
+  std::span<engine::vulkan::Vertex> const getVertBuffer() noexcept;
+  std::span<engine::TransformUBO> const getUniBuffer() noexcept;
 };
 } // namespace engine

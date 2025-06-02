@@ -1,4 +1,5 @@
 #include "include/vulkan/handle.hpp"
+#include "inc/common/loger.h"
 #include <vulkan/vulkan_core.h>
 
 using namespace engine::vulkan;
@@ -50,8 +51,17 @@ void Deleter::operator()(VkSemaphore resource) noexcept {
 void Deleter::operator()(VkFence resource) noexcept {
   vkDestroyFence(_device, resource, nullptr);
 };
+
+void Deleter::operator()(VkDescriptorSetLayout resource) noexcept {
+  vkDestroyDescriptorSetLayout(_device, resource, nullptr);
+};
+
 void Deleter::operator()(VkPipelineLayout resource) noexcept {
   vkDestroyPipelineLayout(_device, resource, nullptr);
+};
+
+void Deleter::operator()(VkDescriptorPool resource) noexcept {
+  vkDestroyDescriptorPool(_device, resource, nullptr);
 };
 
 void Deleter::operator()(VkRenderPass resource) noexcept {

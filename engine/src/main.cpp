@@ -1,5 +1,3 @@
-#include "inc/common/exception.hpp"
-#include "inc/common/loger.h"
 #include "inc/common/window/window-dims.hpp"
 #include "include/ecs/drawing-service.hpp"
 #include "include/game-engine.hpp"
@@ -17,28 +15,13 @@ engine::GameEngine::GameEngine(window::Window &window,
   ecs::DrawingService &dService = ecs::DrawingService::getInstance();
   ecs::EntityManager::init(dService);
 }
+void engine::GameEngine::beginFrame() {
+  window::WindowDims curDims = _window.getDims();
+  _renderer->poll();
+  _renderer->beginFrame(curDims);
+};
 
-void engine::GameEngine::loopStart() {
-  if (!this->onRefreshCallback) {
-    THROW_EXCEPTION("Renderer::onRefreshCallback is not initialized");
-  }
-
-  // _loopCtx.manager = &ecs::EntityManager::getInstance();
-  //
-  _loopCtx.dService = &ecs::DrawingService::getInstance();
-  while (!_window.shouldClose()) {
-    window::WindowDims curDims = _window.getDims();
-    _renderer->poll();
-
-    _renderer->beginFrame(curDims);
-    this->onRefreshCallback(_loopCtx);
-    _renderer->endFrame();
-
-    _window.pollEvents();
-  }
-}
-
-void GameEngine::setContext(LoopContext ctx) { _loopCtx = ctx; };
+void engine::GameEngine::render() { _renderer->endFrame(); };
 
 engine::GameEngine::~GameEngine() {
   ecs::EntityManager::destroy();

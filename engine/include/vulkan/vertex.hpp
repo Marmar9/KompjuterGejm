@@ -15,6 +15,7 @@ concept CVertex = requires {
 struct Vertex {
   float posX;
   float posY;
+  float posZ;
 
   static constexpr VkVertexInputBindingDescription describeBinding() {
     return {/* .binding   = */ 0,
@@ -26,7 +27,7 @@ struct Vertex {
     static constexpr std::array<VkVertexInputAttributeDescription, 1> descs = {{
         {/* .location = */ 0,
          /* .binding  = */ 0,
-         /* .format   = */ VK_FORMAT_R32G32_SFLOAT,
+         /* .format   = */ VK_FORMAT_R32G32B32_SFLOAT,
          /* .offset   = */ 0},
     }};
 

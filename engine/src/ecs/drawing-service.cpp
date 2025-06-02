@@ -1,12 +1,12 @@
 #include "include/ecs/drawing-service.hpp"
 #include "inc/common/loger.h"
 #include "include/ecs/core.hpp"
-#include "include/vulkan/vertex.hpp"
+#include <cstddef>
 #include <span>
 
 namespace engine::ecs {
 
-template <typename A, typename B>
+template <typename B, typename A>
 std::span<B> reinterpret_span(std::span<A> input) {
   static_assert(std::is_trivially_copyable_v<A>,
                 "A must be trivially copyable");
@@ -27,22 +27,24 @@ std::span<B> reinterpret_span(std::span<A> input) {
   return {ptr, input.size() / N};
 }
 
-DrawingService::DrawingService(Renderer *renderer) : _pRenderer(renderer) {
-  std::span<vulkan::Vertex> pVertex = renderer->getBuffer().data();
+DrawingService::DrawingService(Renderer *renderer)
+    : _pRenderer(renderer){
+          // _prevVBuff = reinterpret_span<InstanceData>(renderer->getBuffer());
+      };
 
-  _vData = reinterpret_span<vulkan::Vertex, InstanceData>(pVertex);
-};
-
-void DrawingService::registerEntity(entity_t id) { _vData[id]; }
-void DrawingService::releaseEntity(entity_t id) { _vData[id]; }
+// Usefull later for cache opt
+void DrawingService::registerEntity(entity_t id) {}
+void DrawingService::releaseEntity(entity_t id) {}
 
 void DrawingService::setPos(entity_t id, float posX, float posY) {
-  LOG("Setting pos for id: %d", id);
+  float posZ = 1.f;
+  // LOG("Setting pos for id: %d", id);
+  _curVBuff = reinterpret_span<InstanceData>(_pRenderer->getVertBuffer());
 
-  _vData[id] = {{{-0.5f + posX, 0.0f + posY},   // 0
-                 {0.5f + posX, 0.0f + posY},    // 1
-                 {-0.5f + posX, -0.25f + posY}, // 2
-                 {0.5f + posX, -0.25f + posY}}};
+  _curVBuff[id] = {{{-0.5f + posX, 0.25f + posY, posZ},  // 0
+                    {0.5f + posX, 0.25f + posY, posZ},   // 1
+                    {-0.5f + posX, -0.25f + posY, posZ}, // 2
+                    {0.5f + posX, -0.25f + posY, posZ}}};
 };
 
 void DrawingService::draw(entity_t id) { _pRenderer->render(id * 4, 4); }

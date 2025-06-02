@@ -1,8 +1,14 @@
 #include "inc/game/game.hpp"
+#include "glm/fwd.hpp"
+#include "glm/trigonometric.hpp"
 #include "inc/common/exception.hpp"
 #include "inc/common/window/window-base.hpp"
+#include "inc/common/window/window-dims.hpp"
 #include "include/ecs/core.hpp"
 #include "include/game-engine.hpp"
+
+const constexpr float near = .1F;
+const constexpr float far = 1.F;
 
 using namespace engine;
 int game::entryPoint(window::Window &window,
@@ -14,27 +20,33 @@ int game::entryPoint(window::Window &window,
     ecs::EntityManager &eManager = engine::ecs::EntityManager::getInstance();
     ecs::DrawingService &dService = ecs::DrawingService::getInstance();
 
-    LoopContext ctx = {};
-    ctx.entities[0] = eManager.getEntity(engine::ecs::EcsSigDrawable);
-    ctx.entities[1] = eManager.getEntity(engine::ecs::EcsSigDrawable);
-    ctx.entities[2] = eManager.getEntity(engine::ecs::EcsSigDrawable);
+    ecs::entity_t e1 = eManager.getEntity(engine::ecs::EcsSigDrawable);
+    ecs::entity_t e2 = eManager.getEntity(engine::ecs::EcsSigDrawable);
+    ecs::entity_t e3 = eManager.getEntity(engine::ecs::EcsSigDrawable);
 
-    ecs::entity_t e1 = ctx.entities[0];
-    ecs::entity_t e2 = ctx.entities[1];
-    ecs::entity_t e3 = ctx.entities[2];
-    dService.setPos(e1, 0.0, 0.0);
-    dService.setPos(e2, 0.7, 0.7);
-    dService.setPos(e3, 0.5, 0.5);
+    // Move the loop outside
 
-    engine.setContext(ctx);
+    while (!window.shouldClose()) {
+      window::WindowDims dims = window.getDims();
+      float aspectR = (float)dims.width / dims.height;
 
-    engine.onRefreshCallback = [](LoopContext &ctx) -> void {
-      ctx.dService->draw(ctx.entities[0]);
-      ctx.dService->draw(ctx.entities[1]);
-      ctx.dService->draw(ctx.entities[2]);
+      engine.beginFrame();
+
+      dService.setCameraDirection(glm::vec3(.0, .0, .0), glm::vec3(.0, .0, 1.));
+      dService.setPerspective(near, far, glm::radians(45.f), aspectR);
+
+      dService.setPos(e1, 0.0, 0.0);
+      dService.setPos(e2, 0.7, 0.7);
+      dService.setPos(e3, 0.5, 0.5);
+
+      dService.draw(e1);
+      dService.draw(e2);
+      dService.draw(e3);
+      engine.render();
+
+      window.pollEvents();
     };
 
-    engine.loopStart();
     return 0;
   } catch (utils::Error e) {
     e.tell();

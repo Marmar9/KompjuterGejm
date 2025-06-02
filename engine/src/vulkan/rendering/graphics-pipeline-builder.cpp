@@ -1,11 +1,6 @@
 #include "include/vulkan/rendering/graphics-pipeline-builder.hpp"
-#include "cstdlib"
 #include "inc/common/exception.hpp"
-#include "inc/common/loger.h"
-#include <cstddef>
 #include <cstdint>
-#include <cstdlib>
-#include <cstring>
 
 #define SHADER_INCLUDE(fileName)                                               \
   extern "C" {                                                                 \
@@ -103,11 +98,6 @@ void GraphicsPipelineBuilder::build(VkShaderModule *vertShad,
                                     VkPipelineLayout *pipelineLayout,
                                     VkPipeline *pipeline) const {
 
-  if (vkCreatePipelineLayout(_device, &_structures.pipelineLayoutInfo, nullptr,
-                             pipelineLayout) != VK_SUCCESS) {
-    THROW_EXCEPTION("failed to create pipeline layout!");
-  }
-
   *vertShad = createShaderModule(
       _device, std::span((uint32_t *)SHADER_GET_CODE(triangle_vert),
                          SHADER_GET_SZ(triangle_vert)));
@@ -173,13 +163,9 @@ void GraphicsPipelineBuilder::build(VkShaderModule *vertShad,
   pipelineInfo.pDynamicState = &_structures.dynamicState;
   pipelineInfo.layout = *pipelineLayout;
   pipelineInfo.renderPass = _renderPass;
-  LOG("--------------------- Before --------------------");
-
   if (vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &pipelineInfo,
                                 nullptr, pipeline) != VK_SUCCESS) {
     THROW_EXCEPTION("failed to create graphics pipeline!");
   }
-
-  LOG("--------------------- After --------------------");
 }
 } // namespace engine::vulkan
